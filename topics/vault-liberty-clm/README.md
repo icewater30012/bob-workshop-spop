@@ -1,5 +1,5 @@
 <!-- Created: 2026-09-29 14:25:57 +0800 -->
-<!-- Updated: 2026-09-29 16:05:15 +0800 -->
+<!-- Updated: 2026-09-29 16:58:48 +0800 -->
 # Vault + Liberty 憑證生命週期管理（CLM）
 
 > **用途**：IBM Bob Workshop — 兆豐銀行 MEGA 專場（SP / OP 人員統一題目）
@@ -26,6 +26,8 @@
 - ✅ 使用 Bob 透過 Vault Agent、Shell Script 或 Ansible 自動部署憑證至 Liberty
 - ✅ 使用 Bob 建立 AGENTS.md 記錄環境特性，避免重複踩坑
 - ✅ 使用 Bob 產生 Slash Command，一鍵檢查憑證狀態
+- ✅ 使用 Bob 建立並安裝自己的 SKILL，將 CLM 流程封裝為可重用工具
+- ✅ 使用 Bob + Frontend Slides Skill 製作技術簡報，展示實作成果
 
 ---
 
