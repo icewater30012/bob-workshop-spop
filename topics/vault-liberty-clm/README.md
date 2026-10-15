@@ -1,11 +1,14 @@
 <!-- Created: 2026-09-29 14:25:57 +0800 -->
-<!-- Updated: 2026-09-29 16:58:48 +0800 -->
+<!-- Updated: 2026-10-15 21:07:38 +0800 -->
 # Vault + Liberty 憑證生命週期管理（CLM）
 
 > **用途**：IBM Bob Workshop — 兆豐銀行 MEGA 專場（SP / OP 人員統一題目）
+>
 > **難度**：⭐⭐⭐ 中等 ～ ⭐⭐⭐⭐ 進階（依模組組合而定）
-> **時長**：2 小時
-> **角色**：SP（系統平台）/ OP（維運操作）人員
+>
+> **時長**：1 小時
+>
+> **角色**：SP（系統平台）/ OP（維運操作）人員（每組 5 人，分角色協作）
 
 ---
 
@@ -33,18 +36,59 @@
 
 ## 🏗️ 環境說明
 
+### IBM Cloud 基礎架構
+
+本次 Workshop 環境架設於 **IBM Cloud VPC**，共 **7 台 VM**：
+
+| VM 編號 | 用途 | 規格 | 備註 |
+|---------|------|------|------|
+| `vault-server` | HashiCorp Vault Server（共用） | 4 vCPU / 8 GB / 100 GB | 各組共用，講師管理 |
+| `liberty-g1` | 第 1 組 Liberty Server | 4 vCPU / 8 GB / 100 GB | 第 1 組使用 |
+| `liberty-g2` | 第 2 組 Liberty Server | 4 vCPU / 8 GB / 100 GB | 第 2 組使用 |
+| `liberty-g3` | 第 3 組 Liberty Server | 4 vCPU / 8 GB / 100 GB | 第 3 組使用 |
+| `liberty-g4` | 第 4 組 Liberty Server | 4 vCPU / 8 GB / 100 GB | 第 4 組使用 |
+| `liberty-g5` | 第 5 組 Liberty Server | 4 vCPU / 8 GB / 100 GB | 第 5 組使用 |
+| `liberty-g6` | 第 6 組 Liberty Server | 4 vCPU / 8 GB / 100 GB | 第 6 組使用 |
+
+> **網路拓撲**：所有 VM 部署於同一 VPC Subnet，各 Liberty VM 可透過內網 IP 存取 Vault Server（`http://<vault-internal-ip>:8200`）。
+
+### VM 軟體規格
+
 | 元件 | 說明 |
 |------|------|
+| **作業系統** | RHEL 9（IBM Cloud 官方映像）|
 | **WAS Liberty 版本** | IBM WebSphere Liberty 26.0.0.9（Jakarta EE 11）|
 | **JDK** | OpenJDK 17 |
-| **作業系統** | RHEL 9 |
-| **連線方式** | SSH（講師提供帳號密碼）|
+| **Vault 版本** | HashiCorp Vault 2.0（`vault-server` 專屬安裝）|
+| **連線方式** | SSH（講師提供各組帳號密碼）|
 | **Liberty 安裝路徑** | `/opt/ibm/wlp` |
 | **Server 名稱** | `defaultServer` |
-| **Vault 版本** | HashiCorp Vault 2.0（已預裝，`http://127.0.0.1:8200`）|
-| **Vault Token** | 由講師預先申請，每組一組（共 5～6 組）|
+| **Vault 位址（各組使用）** | `http://<vault-internal-ip>:8200` |
+| **Vault Token** | 由講師預先建立，每組一組獨立 Token |
 
 > 環境已預裝：`openssl`、`keytool`、`curl`、`vault` CLI、`ansible`
+
+---
+
+## 👥 組內角色分工
+
+每組 5 人，分為 **3 個角色**，由組員自行認領（可 1 人獨挑，或 2 人合力）。角色間需互相交付成果。
+
+| 角色 | 建議人數 | 負責範圍 | 對應模組 |
+|------|---------|---------|---------|
+| **🔐 Vault 與憑證管理** | 1～2 人 | 連線 `vault-server`、啟用 PKI、建立 CA、申請憑證與 Token；或使用 OpenSSL 建立自簽憑證 | Stage 1（模組 A 或 B）|
+| **🤖 自動化 / Liberty / 維運** | 2～3 人 | 準備 Liberty 環境、實作 Stage 2 部署模組、驗證憑證上線、撰寫 AGENTS.md 與 `/check-cert` Slash Command | Step 0.1、Stage 2、收尾步驟 |
+| **📑 統整報告員** | 1 人 | 整合各角色成果，使用 Frontend Slides Skill 製作成果簡報 | 🎨 Frontend Slides |
+
+### 角色協作流程
+
+```
+🔐 Vault 與憑證管理
+  └─ 取得憑證 / Token
+       └─ 交付給 → 🤖 自動化 / Liberty / 維運
+                        └─ 部署憑證、驗證上線、建立 Slash Command
+                             └─ 成果交給 → 📑 統整報告員 製作簡報
+```
 
 ---
 
@@ -124,7 +168,7 @@ sudo mkdir -p /opt/scripts
 
 > 使用 HashiCorp Vault 建立 PKI CA，讓 Vault 成為你的內部憑證中心。
 
-**時間**：40 分鐘
+**時間**：20 分鐘
 
 #### Step A-1｜請 Bob 解釋 Vault PKI 架構
 
@@ -212,7 +256,7 @@ openssl x509 -in /opt/certs/server.crt -text -noout | grep -A3 "Validity"
 
 > 使用 OpenSSL 建立自簽 CA，適合快速驗證或無 Vault 環境的場景。
 
-**時間**：25 分鐘
+**時間**：15 分鐘
 
 #### Step B-1｜請 Bob 產生建立自簽 CA 的腳本
 
@@ -277,7 +321,7 @@ keytool -list -v -keystore /opt/certs/keystore.p12 \
 > Vault Agent 以 sidecar 方式持續監控憑證狀態，到期前自動 renew 並重新載入 Liberty。
 > **前置條件**：必須完成 Stage 1 模組 A（Vault PKI）。
 
-**時間**：45 分鐘
+**時間**：25 分鐘
 
 #### Step 1-1｜請 Bob 解釋 Vault Agent 運作原理
 
@@ -375,7 +419,7 @@ echo | openssl s_client -connect localhost:9443 2>/dev/null \
 
 > 使用 Shell Script 整合憑證申請（來源可選 Vault PKI 或 OpenSSL）與 Liberty 重啟，並設定 crontab 定期檢查輪換。
 
-**時間**：40 分鐘
+**時間**：20 分鐘
 
 #### Step 2-1｜請 Bob 設計完整的 cert-rotate.sh
 
@@ -450,7 +494,7 @@ crontab -l  # 驗證排程已設定
 
 > 使用 Ansible 標準化憑證部署流程，適合多台 Liberty Server 統一管理。
 
-**時間**：45 分鐘
+**時間**：25 分鐘
 
 #### Step 3-1｜請 Bob 設計 Ansible Playbook 架構
 
