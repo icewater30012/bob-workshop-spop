@@ -1,0 +1,154 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IBM Bob workshop｜Part 2</title><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#202a36;font:16px/1.65 system-ui,-apple-system,"PingFang TC",sans-serif}main{max-width:1480px;margin:auto;padding:36px}h1{font-size:30px;margin:0 0 8px}h2{font-size:23px}h3{font-size:18px;margin:0 0 8px}p{margin:8px 0 14px}.eyebrow{color:#2879cd;font-size:13px;letter-spacing:2px;font-weight:700}.muted{color:#647386}a{color:#1672cf}nav{display:flex;gap:8px;border-bottom:2px solid #e0e6ed;overflow:auto;margin:26px 0}nav a{white-space:nowrap;text-decoration:none;padding:14px 20px;font-weight:650;border-bottom:4px solid transparent;color:#657384}nav a[aria-current=page]{color:#287ed3;border-color:#287ed3}.combos{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.combo,.architecture,.contract{background:white;border:1px solid #dfe5ec;border-radius:14px;padding:24px}.combo{border-top:5px solid #3488df;display:flex;flex-direction:column}.combo p{flex:1}.pill{display:inline-block;background:#eaf3ff;color:#2268ad;border-radius:5px;padding:3px 9px;font-size:13px;margin:8px 0}.button{display:inline-block;text-decoration:none;color:#247bd3;border:1px solid #6ca4e3;border-radius:7px;padding:9px 15px;background:#f7fbff;font-weight:650}.board{display:grid;grid-template-columns:repeat(6,minmax(230px,1fr));gap:16px;overflow-x:auto;padding:8px 0 20px}.lane{background:#eaf0f6;border-radius:14px;padding:15px}.card{background:white;border:1px solid #dfe5ed;border-left:5px solid #13a455;border-radius:12px;padding:17px;margin-top:14px;font-size:14px}.card h3{font-size:16px}.time{font-size:20px;font-weight:750}.architecture{margin-top:20px}svg{width:100%;height:auto;min-width:760px}.architecture{overflow-x:auto}details{margin-top:15px}summary{cursor:pointer;color:#2276c8;font-weight:600}.prompt{white-space:pre-wrap;line-height:1.7;color:#364860;font:14px/1.75 inherit}.copy{cursor:pointer;background:#f0f6ff;border:1px solid #bdd4ed;border-radius:5px;color:#2674c0;padding:5px 10px;margin-top:10px}.contract{margin:16px 0}.contract li{margin:6px 0}footer{border-top:1px solid #dfe5ec;margin-top:30px;padding-top:18px;color:#657384;font-size:14px}[hidden]{display:none!important}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #f0a324;outline-offset:4px}@media(max-width:1000px){.combos{grid-template-columns:repeat(2,1fr)}main{padding:22px}}@media(max-width:600px){.combos{grid-template-columns:1fr}h1{font-size:25px}}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4fa;border:1px solid #dce4ee;border-radius:8px;padding:16px;font:14px/1.7 ui-monospace,monospace}code{font-family:ui-monospace,monospace}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{border:1px solid #dce4ee;padding:10px;text-align:left}th{background:#edf3fa}.handout{max-width:1100px;margin:auto}.handout h2{margin-top:32px}.handout h3{margin-top:26px}.full-material{background:white;border:1px solid #dde5ed;padding:24px;border-radius:12px;margin-top:24px}.overview-info{margin-top:26px}.command-card{margin-top:14px}.command-card pre{font-size:13px}.table-wrap{overflow-x:auto}.handout svg{max-height:none}</style></head><body><main class="handout"><h1>Part 2｜Vault PKI ＋ Shell／crontab</h1>
+<p><a href="../README.html">← 回組合總覽</a> · <a href="../index.html#part-2">開啟分頁教材</a></p>
+<p><strong>難度：中階｜總時間：60 分鐘｜適合：熟悉 Shell、想串接集中式簽發的維運人員</strong></p>
+<h2>主機部署架構</h2>
+<div class="architecture"><svg viewBox="0 -55 1200 545" role="img" aria-label="Part 2 主機部署架構：學員電腦、Liberty VM 與 Vault Server VM"><defs><marker id="arch2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3" fill="#4482ca"/></marker></defs><rect x="20" y="85" width="260" height="300" rx="12" fill="#f0f5fc" stroke="#99b6d6" stroke-width="2"/><text x="150" y="120" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="21">學員電腦</text><rect x="40" y="155" width="220" height="48" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="150.0" y="185" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">IBM Bob IDE</text><rect x="40" y="235" width="220" height="48" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="150.0" y="265" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">SSH 終端／HTTPS 測試</text><text x="150" y="355" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="14">產生設定、操作與驗證</text><rect x="430" y="35" width="340" height="410" rx="12" fill="#eef8f4" stroke="#81bca4" stroke-width="2"/><text x="600.0" y="72" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="22">Liberty VM</text><text x="600.0" y="97" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="14">各組獨立主機</text><rect x="450" y="120" width="300" height="48" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="600.0" y="150" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">crontab</text><rect x="450" y="195" width="300" height="48" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="600.0" y="225" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">Shell 換證腳本</text><rect x="450" y="270" width="300" height="48" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="600.0" y="300" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">PKCS12 keystore</text><rect x="450" y="345" width="300" height="48" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="600.0" y="375" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">Liberty HTTPS :9443</text><path d="M280 185 H430" fill="none" stroke="#4482ca" stroke-width="2" marker-end="url(#arch2)"/><text x="355.0" y="170" text-anchor="middle" fill="#476382" font-family="system-ui, sans-serif" font-size="14">SSH：操作／檔案</text><path d="M280 355 H430" fill="none" stroke="#4482ca" stroke-width="2" marker-end="url(#arch2)"/><text x="355.0" y="340" text-anchor="middle" fill="#476382" font-family="system-ui, sans-serif" font-size="14">HTTPS :9443：驗證</text><text x="600.0" y="425" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="14">上列元件皆位於同一台 VM 內</text><rect x="930" y="85" width="250" height="300" rx="12" fill="#f4f0fc" stroke="#b7a0d2" stroke-width="2"/><text x="1055" y="120" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="21">Vault Server VM</text><text x="1055" y="145" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="14">講師管理／各組共用</text><rect x="945" y="180" width="220" height="48" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="1055.0" y="210" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">Vault Server :8200</text><rect x="945" y="265" width="220" height="48" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="1055.0" y="295" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">PKI Engine／每組 role</text><path d="M770 215 H930" fill="none" stroke="#4482ca" stroke-width="2" marker-end="url(#arch2)"/><text x="850" y="196" text-anchor="middle" fill="#476382" font-family="system-ui, sans-serif" font-size="14">Vault API :8200</text><text x="850" y="245" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="14">認證／簽發</text><text x="850" y="267" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="14">經內網連線</text><rect x="40" y="295" width="220" height="40" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="150" y="321" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">瀏覽器／Vault UI</text><rect x="945" y="330" width="220" height="40" rx="8" fill="#fff" stroke="#c1d4e9" stroke-width="2"/><text x="1055" y="356" text-anchor="middle" fill="#173e68" font-family="system-ui, sans-serif" font-size="16">Vault Web UI</text><path d="M20 315 H5 V-5 H1055 V85" fill="none" stroke="#9862cd" stroke-width="2" marker-end="url(#arch2)"/><text x="600" y="-20" text-anchor="middle" fill="#7840ad" font-family="system-ui, sans-serif" font-size="16">瀏覽器 → Vault UI：HTTP／HTTPS 查看憑證狀態</text></svg></div>
+<p>Bob 在學員電腦使用；部署工具與 Liberty 在該組 VM 執行。學員可透過瀏覽器開啟講師提供的 Vault UI 網址，查看權限內的憑證狀態。</p>
+<h2>操作前準備</h2>
+<p>在 Bob IDE Terminal 登入自己的 Liberty VM，以第 1 組為例：</p>
+<pre><code class="language-bash"># 在學員電腦查詢該組 SSH config 的有效 HostName；此例為第 1 組
+ssh -G liberty-1 | awk &#x27;$1 == &quot;hostname&quot; {print $2; exit}&#x27;
+# 記下輸出的 VM IP，再登入同一台 VM
+ssh liberty-1
+# 以下在 Liberty VM 執行，自行建立本課工作目錄
+mkdir -p ~/clm-workshop
+cd ~/clm-workshop
+hostname
+whoami
+/opt/ibm/wlp/bin/server status defaultServer
+openssl version</code></pre>
+<p>確認該組 Vault API 位址、信任 CA、PKI mount／role 與受限 Token 檔位置。Token 只從受限本機檔案讀取。</p>
+<p><strong>先讓 Bob 確認實際環境：</strong></p>
+<pre><code class="language-text">請協助檢查 Liberty server.xml，確認是否已設定 HTTPS、port 與 keystore；若已有憑證才讀取其 SAN，並確認服務控制方式，只讀公開憑證與設定，不顯示私鑰或密碼。
+請列出本路線所需檔案與認證的位置，缺少時先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。工作目錄是現在建立的 ~/clm-workshop，產出腳本用明確參數，Token 從受限本機檔案讀取；請依確認結果給完整執行命令。</code></pre>
+<p>缺少 CA、role 或認證資料時，先向講師確認。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。</p>
+<h3>部署前確認、部署後驗證</h3>
+<p><strong>開始時沒有 HTTPS 或憑證也可以做。</strong> 部署前只檢查 Liberty 設定；已提供憑證才記錄舊序號。部署完成後，才檢查服務是否送出本次產生的憑證。</p>
+<p><strong>Liberty VM IP 從學員電腦的 SSH config 查詢</strong>（用前面的 <code>ssh -G liberty-1</code>，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 <code>TLS_HOST</code>，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 <code>127.0.0.1</code> IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。</p>
+<p><strong>給 Bob 的部署要求：</strong></p>
+<pre><code class="language-text">請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。</code></pre>
+<p>以下函式在目前 Terminal 定義一次；<code>record_baseline</code> 在步驟 1 使用，<code>check_cert</code> 在部署完成後使用。將 CA 與本次 leaf 路徑換成實際輸出位置後，才執行 <code>check_cert</code>。這些變數只供驗證使用。</p>
+<details>
+<summary>展開設定與驗證函式：record_baseline／check_cert</summary>
+<pre><code class="language-bash">set -o pipefail
+TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
+TLS_PORT=9443 # 以實際設定為準
+CA_FILE=&#x27;/實際路徑/ca.crt&#x27;
+LEAF_FILE=&#x27;/實際路徑/server.crt&#x27;
+
+record_baseline() (
+  set -o pipefail
+  # 僅記錄公開資訊，不宣稱舊憑證已通過信任驗證
+  if timeout 10 openssl s_client -connect &quot;${TLS_HOST}:${TLS_PORT}&quot; \
+      &lt;/dev/null 2&gt;baseline-tls.log \
+      | openssl x509 -noout -serial -issuer -dates &gt; before.tmp; then
+    mv before.tmp before.txt
+    cat before.txt
+  else
+    rm -f before.tmp before.txt
+    echo &#x27;尚未取得線上憑證，確認設定後走首次部署流程。&#x27;
+  fi
+)
+
+check_cert() (
+  set -euo pipefail
+  : &quot;${TLS_HOST:?}&quot; &quot;${TLS_PORT:?}&quot; &quot;${CA_FILE:?}&quot; &quot;${LEAF_FILE:?}&quot;
+  peer=$(timeout 10 openssl s_client \
+    -connect &quot;${TLS_HOST}:${TLS_PORT}&quot; -verify_ip &quot;$TLS_HOST&quot; \
+    -CAfile &quot;$CA_FILE&quot; -verify_return_error \
+    &lt;/dev/null 2&gt;tls-check.log | openssl x509 -outform PEM)
+  expected=$(openssl x509 -in &quot;$LEAF_FILE&quot; -noout -fingerprint -sha256)
+  actual=$(printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -fingerprint -sha256)
+  [ &quot;$expected&quot; = &quot;$actual&quot; ] || { echo &#x27;線上憑證與本次產出不一致&#x27; &gt;&amp;2; exit 1; }
+  printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -serial -issuer -dates -ext subjectAltName
+  echo &#x27;驗證通過：TLS、CA 信任、IP SAN 與本次憑證指紋一致&#x27;
+)</code></pre>
+</details>
+<p><code>record_baseline</code> 無法取得憑證時，先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。<code>check_cert</code> 失敗則查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</p>
+<h3>Vault 簽發設定</h3>
+<p>確認該組 role 允許 IP SAN（<code>allow_ip_sans=true</code>），簽發請求的 <code>ip_sans</code> 帶入 SSH config 查到的 VM IP 與 <code>127.0.0.1</code>。純 IP 測試可由講師將該組 role 設為 <code>require_cn=false</code>，並省略 CN；若保留必填 CN，使用 role 允許的標籤並避免自動加入 DNS SAN（<code>exclude_cn_from_sans=true</code>）。共用 role 由講師確認，不由學員任意修改。這是私有 PKI 的 role 權限，不是 DNS challenge。</p>
+<h2>實作流程</h2>
+<h3>1. 辨識現況｜5 分鐘</h3>
+<p>檢查 HTTPS／keystore 設定，有舊憑證才記錄；確認 Vault 內網連線及每組 role 名稱。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
+1. TLS 憑證生命週期的申請、核發、部署、監控、輪換與撤銷。
+2. Liberty 的 JKS 與 PKCS12 有何差異，本次為何選 PKCS12。
+3. 自動輪換與手動置換的風險差異。
+4. Vault PKI Secrets Engine 在 CLM 的角色，以及 role 如何限制簽發。
+5. Shell 如何向 Vault 申請憑證，crontab 如何觸發輪換。
+
+再根據本次環境：
+請根據環境設定解釋簽發 API、role 與 TTL；Token 只讀取本機受限檔案，不要要求我貼 Token。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">vault version
+record_baseline</code></pre>
+<p><strong>檢查點：</strong> 基準資料與 API 路徑。</p>
+<h3>2. 取得配對憑證｜10 分鐘</h3>
+<p>使用已建好的 PKI role 申請一次憑證，拆分同一 JSON 回應中的 key、leaf 與完整 ca_chain。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請產生申請及拆檔腳本，從環境設定取得 Vault 位址、mount、role、CN 與 SAN。檢查 API 錯誤與必要欄位，將完整 ca_chain 輸出到 chain.pem，檔案權限只允許執行帳號讀取。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">bash -n ./request-cert.sh
+chmod 700 ./request-cert.sh
+./request-cert.sh
+# 檢查憑證與鏈，不顯示私鑰；路徑依產出的 staging 目錄調整</code></pre>
+<p><strong>檢查點：</strong> 通過配對與鏈驗證的 PEM 檔。</p>
+<h3>3. 建立輪換腳本｜17 分鐘</h3>
+<p>補完到期判斷、強制模式、備份、轉檔與部署；保留 server.xml 的其他功能；未設定 HTTPS 時補齊所需設定。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請建立 cert-rotate.sh：一般模式尚未達自行設定的輪換門檻時略過，FORCE=true 才強制簽發；加互斥鎖。新憑證 TTL 自行設定但須符合該組 Vault role 上限，輪換門檻須小於 TTL，先在暫存目錄驗證配對及鏈並轉 PKCS12，再備份並原子替換 live keystore。使用已確認的服務控制方式重啟，驗證線上序號；失敗還原並恢復服務。Token 和 keystore 密碼從受限本機檔讀取，不寫入日誌。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">bash -n ./cert-rotate.sh
+chmod 700 ./cert-rotate.sh</code></pre>
+<p><strong>檢查點：</strong> 可執行的 cert-rotate.sh。</p>
+<h3>4. 測試與排程｜13 分鐘</h3>
+<p>先 FORCE=true 完成換證，再跑一般模式確認 skip；新增每日 02:00 的 cron，保留原有排程。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請使用絕對路徑與明確設定檔產生 cron 項目，考慮 cron 的精簡環境與互斥鎖。安裝時保留現有 crontab；課堂手動執行同一命令驗證，不等待凌晨。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">FORCE=true ./cert-rotate.sh
+check_cert | tee after.txt
+./cert-rotate.sh
+# 第二次應顯示未達門檻，略過簽發與重啟
+crontab -l
+crontab -e
+# 只新增本課排程，保留其他項目
+crontab -l</code></pre>
+<p><strong>檢查點：</strong> 部署驗證、skip 紀錄與 crontab。</p>
+<h3>5. 驗證排程執行環境｜10 分鐘</h3>
+<p>確認換證腳本在 cron 的精簡環境下仍可取得必要設定，憑證未到期時會 skip。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請檢查 cert-rotate.sh 是否依賴 Terminal 的環境變數，改為明確腳本參數及受限本機認證檔。不要假設存在 env.sh。請依實際參數提供 env -i 測試命令，包含必要 HOME、PATH 與 Vault CA 信任路徑；不使用 FORCE。確認結果 skip、不簽發、不重啟，並檢查退出碼與日誌。不要回顯 Token。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash"># 請 Bob 先補齊與 cron 相同的實際參數，再執行
+# 必要參數接在 cert-rotate.sh 後；認證值只從受限本機檔案讀取
+env -i HOME=&quot;$HOME&quot; PATH=/usr/local/bin:/usr/bin:/bin \
+  /bin/bash &quot;$HOME/clm-workshop/cert-rotate.sh&quot;
+echo &quot;exit code: $?&quot;
+check_cert</code></pre>
+<p><strong>檢查點：</strong> 精簡環境手動測試成功，未到期時 skip。</p>
+<h3>6. 成果交付｜5 分鐘</h3>
+<p>提交腳本、排程與部署後憑證資訊（有舊憑證才附前後序號），說明 Token 到期後誰負責處理。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請依實測整理五行維運交接，列出排程、觸發門檻、驗證、恢復及 Token 到期限制。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">check_cert | tee after.txt
+if [ -s before.txt ]; then
+  diff -u before.txt after.txt || true
+else
+  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
+fi
+crontab -l</code></pre>
+<p><strong>檢查點：</strong> 交接紀錄。</p>
+<h2>crontab 設定範例</h2>
+<p>保留原有排程，將帳號、絕對路徑與必要腳本參數換成實際值：</p>
+<pre><code class="language-cron">0 2 * * * /bin/bash /home/ACCOUNT/clm-workshop/cert-rotate.sh &gt;&gt; /home/ACCOUNT/clm-workshop/cron.log 2&gt;&amp;1</code></pre>
+<p>Token 由腳本讀取受限本機檔案，不放在 cron 指令或日誌。課堂手動測試同一命令，不必等到凌晨。</p>
+<h2>60 分鐘內的完成標準</h2>
+<ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>重跑未到期時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li></ol>
+<h2>延伸練習（不計入 60 分鐘）</h2>
+<ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
+<h2>Cheatsheet：實作流程與檢查點</h2>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>基準資料與 API 路徑。</td></tr><tr><td>05–15 分</td><td>取得配對憑證</td><td>通過配對與鏈驗證的 PEM 檔。</td></tr><tr><td>15–32 分</td><td>建立輪換腳本</td><td>可執行的 cert-rotate.sh。</td></tr><tr><td>32–45 分</td><td>測試與排程</td><td>部署驗證、skip 紀錄與 crontab。</td></tr><tr><td>45–55 分</td><td>驗證排程執行環境</td><td>精簡環境手動測試成功，未到期時 skip。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄。</td></tr></table></div></main></body></html>

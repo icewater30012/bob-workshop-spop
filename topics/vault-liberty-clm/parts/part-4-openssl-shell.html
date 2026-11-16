@@ -1,0 +1,169 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IBM Bob workshop｜Part 4</title><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#202a36;font:16px/1.65 system-ui,-apple-system,"PingFang TC",sans-serif}main{max-width:1480px;margin:auto;padding:36px}h1{font-size:30px;margin:0 0 8px}h2{font-size:23px}h3{font-size:18px;margin:0 0 8px}p{margin:8px 0 14px}.eyebrow{color:#2879cd;font-size:13px;letter-spacing:2px;font-weight:700}.muted{color:#647386}a{color:#1672cf}nav{display:flex;gap:8px;border-bottom:2px solid #e0e6ed;overflow:auto;margin:26px 0}nav a{white-space:nowrap;text-decoration:none;padding:14px 20px;font-weight:650;border-bottom:4px solid transparent;color:#657384}nav a[aria-current=page]{color:#287ed3;border-color:#287ed3}.combos{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.combo,.architecture,.contract{background:white;border:1px solid #dfe5ec;border-radius:14px;padding:24px}.combo{border-top:5px solid #3488df;display:flex;flex-direction:column}.combo p{flex:1}.pill{display:inline-block;background:#eaf3ff;color:#2268ad;border-radius:5px;padding:3px 9px;font-size:13px;margin:8px 0}.button{display:inline-block;text-decoration:none;color:#247bd3;border:1px solid #6ca4e3;border-radius:7px;padding:9px 15px;background:#f7fbff;font-weight:650}.board{display:grid;grid-template-columns:repeat(6,minmax(230px,1fr));gap:16px;overflow-x:auto;padding:8px 0 20px}.lane{background:#eaf0f6;border-radius:14px;padding:15px}.card{background:white;border:1px solid #dfe5ed;border-left:5px solid #13a455;border-radius:12px;padding:17px;margin-top:14px;font-size:14px}.card h3{font-size:16px}.time{font-size:20px;font-weight:750}.architecture{margin-top:20px}svg{width:100%;height:auto;min-width:760px}.architecture{overflow-x:auto}details{margin-top:15px}summary{cursor:pointer;color:#2276c8;font-weight:600}.prompt{white-space:pre-wrap;line-height:1.7;color:#364860;font:14px/1.75 inherit}.copy{cursor:pointer;background:#f0f6ff;border:1px solid #bdd4ed;border-radius:5px;color:#2674c0;padding:5px 10px;margin-top:10px}.contract{margin:16px 0}.contract li{margin:6px 0}footer{border-top:1px solid #dfe5ec;margin-top:30px;padding-top:18px;color:#657384;font-size:14px}[hidden]{display:none!important}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #f0a324;outline-offset:4px}@media(max-width:1000px){.combos{grid-template-columns:repeat(2,1fr)}main{padding:22px}}@media(max-width:600px){.combos{grid-template-columns:1fr}h1{font-size:25px}}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4fa;border:1px solid #dce4ee;border-radius:8px;padding:16px;font:14px/1.7 ui-monospace,monospace}code{font-family:ui-monospace,monospace}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{border:1px solid #dce4ee;padding:10px;text-align:left}th{background:#edf3fa}.handout{max-width:1100px;margin:auto}.handout h2{margin-top:32px}.handout h3{margin-top:26px}.full-material{background:white;border:1px solid #dde5ed;padding:24px;border-radius:12px;margin-top:24px}.overview-info{margin-top:26px}.command-card{margin-top:14px}.command-card pre{font-size:13px}.table-wrap{overflow-x:auto}.handout svg{max-height:none}</style></head><body><main class="handout"><h1>Part 4｜OpenSSL ＋ Shell／crontab</h1>
+<p><a href="../README.html">← 回組合總覽</a> · <a href="../index.html#part-4">開啟分頁教材</a></p>
+<p><strong>難度：⭐ 入門｜總時間：60 分鐘</strong></p>
+<h2>主機部署架構</h2>
+<div class="architecture"><svg viewBox="0 0 1200 500" role="img" aria-label="Part 4：學員電腦連至 Liberty VM 左側 HTTPS 9443；PKCS12 是 Liberty 內的檔案"><defs><marker id="arch4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3" fill="#4482ca"/></marker></defs>
+<rect x="20" y="100" width="260" height="270" rx="14" fill="#f0f5fc" stroke="#99b6d6" stroke-width="2"/><text x="150" y="140" text-anchor="middle" font-size="22" fill="#173e68">學員電腦</text><rect x="40" y="180" width="220" height="65" rx="8" fill="white" stroke="#c1d4e9"/><text x="150" y="207" text-anchor="middle" font-size="17">IBM Bob IDE</text><text x="150" y="231" text-anchor="middle" font-size="15">SSH Terminal／HTTPS 測試</text>
+<rect x="650" y="30" width="530" height="440" rx="14" fill="#eef8f4" stroke="#81bca4" stroke-width="2"/><text x="915" y="65" text-anchor="middle" font-size="22" fill="#173e68">Liberty VM：各組獨立</text>
+<rect x="675" y="95" width="215" height="60" rx="9" fill="white" stroke="#c1d4e9"/><text x="782" y="120" text-anchor="middle" font-size="16">crontab ＋ Shell 腳本</text><text x="782" y="143" text-anchor="middle" font-size="13">排程與部署</text>
+<rect x="930" y="95" width="225" height="60" rx="9" fill="white" stroke="#c1d4e9"/><text x="1042" y="120" text-anchor="middle" font-size="16">OpenSSL</text><text x="1042" y="143" text-anchor="middle" font-size="14">產生伺服器自簽憑證</text>
+<rect x="820" y="215" width="330" height="225" rx="12" fill="#fff" stroke="#81bca4" stroke-width="2"/><text x="985" y="252" text-anchor="middle" font-size="21" fill="#173e68">Liberty server</text><text x="985" y="284" text-anchor="middle" font-size="15">TLS 設定讀取下方憑證檔</text><rect x="845" y="325" width="280" height="75" rx="8" fill="#eaf3ff" stroke="#a3c7f3"/><text x="985" y="353" text-anchor="middle" font-size="17">PKCS12 keystore 檔案</text><text x="985" y="379" text-anchor="middle" font-size="14">server.crt ＋ server.key</text>
+<rect x="590" y="295" width="130" height="65" rx="10" fill="#eaf3ff" stroke="#4482ca" stroke-width="2"/><text x="655" y="321" text-anchor="middle" font-size="16" fill="#173e68">HTTPS</text><text x="655" y="346" text-anchor="middle" font-size="19" fill="#173e68">:9443</text>
+<path d="M280 125 H675" fill="none" stroke="#4482ca" stroke-width="2" marker-end="url(#arch4)"/><text x="475" y="111" text-anchor="middle" font-size="16" fill="#476382">SSH：操作與傳送檔案</text>
+<path d="M280 325 H590" fill="none" stroke="#4482ca" stroke-width="2" marker-end="url(#arch4)"/><text x="435" y="310" text-anchor="middle" font-size="16" fill="#476382">HTTPS 連線與驗證</text>
+<path d="M720 327 H820" fill="none" stroke="#4482ca" stroke-width="2" marker-end="url(#arch4)"/>
+<path d="M890 125 H930" fill="none" stroke="#4482ca" stroke-width="2" marker-end="url(#arch4)"/>
+<path d="M782 155 V363 H845" fill="none" stroke="#4482ca" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arch4)"/><text x="746" y="203" text-anchor="middle" font-size="14" fill="#476382">部署檔案</text>
+</svg></div>
+<p>Bob 在學員電腦使用；OpenSSL、Shell 與 crontab 在 Liberty VM 執行。PKCS12 是 Liberty 使用的檔案，9443 是該 VM 的 HTTPS 入口。</p>
+<h2>操作前準備</h2>
+<p>在 Bob IDE Terminal 登入自己的 Liberty VM，第 1 組範例：</p>
+<pre><code class="language-bash"># 在學員電腦查詢該組 SSH config 的有效 HostName；此例為第 1 組
+ssh -G liberty-1 | awk &#x27;$1 == &quot;hostname&quot; {print $2; exit}&#x27;
+# 記下輸出的 VM IP，再登入同一台 VM
+ssh liberty-1
+# 以下在 Liberty VM 執行；自行建立本課工作目錄
+mkdir -p ~/clm-workshop
+cd ~/clm-workshop
+hostname
+whoami
+/opt/ibm/wlp/bin/server status defaultServer
+openssl version</code></pre>
+<p>本 Part 直接產生 <strong>伺服器自簽憑證</strong>，由伺服器自己的私鑰簽署，不另外建立 CA 或 CA 憑證。憑證效期與輪換門檻自行決定，門檻需小於效期。</p>
+<h3>部署前確認、部署後驗證</h3>
+<p><strong>開始時沒有 HTTPS 或憑證也可以做。</strong> 部署前只檢查 Liberty 設定；已提供憑證才記錄舊序號。部署完成後，才檢查服務是否送出本次產生的憑證。</p>
+<p><strong>Liberty VM IP 從學員電腦的 SSH config 查詢</strong>（用前面的 <code>ssh -G liberty-1</code>，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 <code>TLS_HOST</code>，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 <code>127.0.0.1</code> IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。</p>
+<p><strong>給 Bob 的部署要求：</strong></p>
+<pre><code class="language-text">請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並用本次自簽憑證作為明確信任依據，驗證 IP SAN。
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。</code></pre>
+<p>以下函式在目前 Terminal 定義一次；<code>record_baseline</code> 在步驟 1 使用，<code>check_cert</code> 在部署完成後使用。將本次伺服器憑證路徑換成實際輸出位置後，才執行 <code>check_cert</code>。這些變數只供驗證使用。</p>
+<details>
+<summary>展開設定與驗證函式：record_baseline／check_cert</summary>
+<pre><code class="language-bash">set -o pipefail
+TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
+TLS_PORT=9443 # 以實際設定為準
+CERT_FILE=&#x27;/實際路徑/server.crt&#x27; # 本次產生的伺服器自簽憑證
+
+record_baseline() (
+  set -o pipefail
+  # 僅記錄公開資訊，不宣稱舊憑證已通過信任驗證
+  if timeout 10 openssl s_client -connect &quot;${TLS_HOST}:${TLS_PORT}&quot; \
+      &lt;/dev/null 2&gt;baseline-tls.log \
+      | openssl x509 -noout -serial -issuer -dates &gt; before.tmp; then
+    mv before.tmp before.txt
+    cat before.txt
+  else
+    rm -f before.tmp before.txt
+    echo &#x27;尚未取得線上憑證，確認設定後走首次部署流程。&#x27;
+  fi
+)
+
+check_cert() (
+  set -euo pipefail
+  : &quot;${TLS_HOST:?}&quot; &quot;${TLS_PORT:?}&quot; &quot;${CERT_FILE:?}&quot;
+  peer=$(timeout 10 openssl s_client \
+    -connect &quot;${TLS_HOST}:${TLS_PORT}&quot; -verify_ip &quot;$TLS_HOST&quot; \
+    -CAfile &quot;$CERT_FILE&quot; -check_ss_sig -verify_return_error \
+    &lt;/dev/null 2&gt;tls-check.log | openssl x509 -outform PEM)
+  expected=$(openssl x509 -in &quot;$CERT_FILE&quot; -noout -fingerprint -sha256)
+  actual=$(printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -fingerprint -sha256)
+  [ &quot;$expected&quot; = &quot;$actual&quot; ] || { echo &#x27;線上憑證與本次產出不一致&#x27; &gt;&amp;2; exit 1; }
+  printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -serial -issuer -dates -ext subjectAltName
+  echo &#x27;驗證通過：TLS、明確信任的自簽憑證、IP SAN 與本次憑證指紋一致&#x27;
+)</code></pre>
+</details>
+<p><code>record_baseline</code> 無法取得憑證時，先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。<code>check_cert</code> 失敗則查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</p>
+<h2>實作流程</h2>
+<h3>1. 辨識現況｜5 分鐘</h3>
+<p>先用 Bob 釐清自簽憑證與換證流程，再檢查這台 VM 的 HTTPS／keystore 設定；有舊憑證才記錄序號。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
+1. TLS 憑證生命週期的申請、核發、部署、監控、輪換與撤銷。
+2. Liberty 的 JKS 與 PKCS12 有何差異，本次為何選 PKCS12。
+3. 自動輪換與手動置換的風險差異。
+4. 伺服器自簽憑證如何用自己的私鑰簽署，為何不需另外建立 CA，以及如何選擇效期與輪換門檻。
+5. Shell 與 crontab 如何檢查到期並執行輪換。
+
+再根據本次環境：
+請透過 SSH 檢查本組 Liberty 的 server.xml、執行狀態與既有公開憑證，列出：
+- HTTPS 是否啟用、port、keystore 路徑及格式。
+- 有憑證時才列出序號、SAN 與到期日；沒有則標示首次部署。
+- 本次 server.crt、server.key、keystore.p12 的規劃路徑及服務控制方式。
+不要顯示私鑰或密碼，也不要假設已有 env.sh、程式骨架或測試憑證。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">openssl version
+record_baseline</code></pre>
+<p><strong>檢查點：</strong> 理解自簽流程，取得本組 HTTPS／keystore 現況與檔案路徑。</p>
+<h3>2. 產生伺服器憑證｜10 分鐘</h3>
+<p>讓 Bob 直接產生私鑰與帶 IP SAN 的伺服器自簽憑證；效期自行選擇，驗證自簽簽章與私鑰配對。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請產生 issue-cert.sh，直接用 OpenSSL req -x509 建立 server.key 與伺服器自簽 server.crt，不另外建立 CA、不產生 ca.crt 或 ca.key，也不需要 CSR 送簽流程。設定 basicConstraints=critical,CA:FALSE、適合 TLS server 的 keyUsage 及 extendedKeyUsage=serverAuth。CN 僅作標籤，IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。效期、IP、輸出路徑用參數傳入，每次產生新憑證使用新序號。使用 umask 077；檢查自簽簽章、IP SAN 與私鑰配對，不顯示私鑰。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">bash -n ./issue-cert.sh
+chmod 700 ./issue-cert.sh
+./issue-cert.sh
+# 請 Bob 依實際輸出目錄提供 自簽簽章、IP SAN 與私鑰配對驗證命令</code></pre>
+<p><strong>檢查點：</strong> 通過驗證的 server.crt 與 server.key。</p>
+<h3>3. 建立換證腳本｜17 分鐘</h3>
+<p>整合到期判斷、PKCS12 轉換、備份與部署，避免只有單次產生憑證就結束。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請建立 cert-rotate.sh，FORCE 預設 false：由學員設定輪換門檻（小於憑證效期）、FORCE=true 強制模式、互斥鎖（flock，避免排程與手動換證同時執行）、暫存目錄、先驗證自簽憑證及私鑰配對，再將 server.crt＋server.key 轉 PKCS12（不加 CA 鏈）、備份及原子替換（同一檔案系統內先完成新檔，再 rename 替換）、受控重啟 Liberty、線上序號確認；若部署失敗則還原並恢復服務。保留 server.xml 其他功能，首次部署時補齊 HTTPS 設定；密碼讀取受限本機檔；每個步驟明確處理失敗。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">bash -n ./cert-rotate.sh
+chmod 700 ./cert-rotate.sh</code></pre>
+<p><strong>檢查點：</strong> 可執行腳本與備份。</p>
+<h4>這三個設定是什麼？</h4>
+<div class="table-wrap"><table><tr><th>設定</th><th>用途</th><th>本課怎麼用</th></tr><tr><td>互斥鎖</td><td>排程與手動換證撞在一起時，只讓一份腳本執行，避免同時覆蓋檔案或重啟</td><td>用同一個 <code>flock</code> 鎖保護整段換證流程</td></tr><tr><td>原子替換</td><td>先把新 PKCS12 完整產生並驗證，再一次切換檔名，避免 Liberty 讀到寫了一半的檔案</td><td>暫存檔放在目標檔案同一個檔案系統；它不等於免重啟或自動 rollback</td></tr><tr><td><code>FORCE=true</code></td><td>暫時略過「未到輪換門檻就 skip」的判斷，方便課堂測試</td><td>只用在 <code>cert-rotate.sh</code> 的手動測試；一般執行與 cron 不加，且仍須做完整驗證</td></tr></table></div>
+<p><code>FORCE</code> 是本課要求 Bob 寫進腳本的自訂環境變數，不是 Shell 或 OpenSSL 內建功能；<code>FORCE=true ./cert-rotate.sh</code> 只對這一次執行生效。首次部署不需要它，產生憑證的 <code>issue-cert.sh</code> 也不需要它。</p>
+<h3>4. 實測與排程｜13 分鐘</h3>
+<p>首次沒有 keystore 時，一般執行就應部署；已有憑證時才用強制模式測試一次輪換。完成後一般重跑應 skip，並加入每日 02:00 排程。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請提供保留既有 crontab 的安裝方式，排程使用絕對路徑與腳本參數；用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash"># 首次部署：沒有 keystore 就直接建立，不需 FORCE
+./cert-rotate.sh
+# 已有尚未到期的憑證，但想測試一次換證時，才改用：
+# FORCE=true ./cert-rotate.sh
+check_cert | tee after.txt
+./cert-rotate.sh
+# 第二次應 skip
+crontab -l
+crontab -e
+crontab -l</code></pre>
+<p><strong>檢查點：</strong> 線上新序號、skip 與 cron 設定。</p>
+<h3>5. 驗證排程執行環境｜10 分鐘</h3>
+<p>確認腳本在 cron 的精簡環境下仍可執行，檢查日誌與 skip 結果。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請檢查 cert-rotate.sh 是否依賴互動 Terminal 的環境變數。改用明確腳本參數及絕對路徑，不要假設存在 env.sh。提供 env -i 的手動測試命令，保留必要 HOME、PATH 與實際參數；不使用 FORCE，預期未到期就 skip。檢查退出碼與日誌，不應重新簽發或重啟 Liberty。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash"># 先請 Bob 依實際腳本參數補齊測試命令，再執行
+# 以下適用腳本已具備明確參數或已確認的非機密預設值
+# 若需參數，須加在 cert-rotate.sh 後，與 cron 完全一致
+env -i HOME=&quot;$HOME&quot; PATH=/usr/local/bin:/usr/bin:/bin \
+  /bin/bash &quot;$HOME/clm-workshop/cert-rotate.sh&quot;
+echo &quot;exit code: $?&quot;
+check_cert</code></pre>
+<p><strong>檢查點：</strong> 精簡環境執行成功，未到期時 skip，線上服務正常。</p>
+<h3>6. 成果交付｜5 分鐘</h3>
+<p>提交簽發腳本、輪換腳本、排程與部署後憑證資訊（有舊憑證才附前後序號）。</p>
+<p><strong>給 Bob 的提示：</strong></p>
+<pre><code class="language-text">請根據實測整理五行交接，包含換證條件、憑證與私鑰位置、PKCS12 路徑、驗證及恢復方式。</code></pre>
+<p><strong>操作指令（Liberty VM）：</strong></p>
+<pre><code class="language-bash">check_cert | tee after.txt
+if [ -s before.txt ]; then
+  diff -u before.txt after.txt || true
+else
+  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
+fi
+crontab -l</code></pre>
+<p><strong>檢查點：</strong> 交接紀錄。</p>
+<h2>crontab 設定範例</h2>
+<p>在 Liberty VM 執行 <code>crontab -e</code>，保留原有排程。將帳號、路徑與必要腳本參數改成該組實際值：</p>
+<pre><code class="language-cron">0 2 * * * /bin/bash /home/ACCOUNT/clm-workshop/cert-rotate.sh &gt;&gt; /home/ACCOUNT/clm-workshop/cron.log 2&gt;&amp;1</code></pre>
+<p>腳本需有到期判斷、互斥鎖與日誌，且不能依賴目前 Terminal 的變數。課堂以相同指令手動測試，不必等到凌晨。</p>
+<h2>60 分鐘內的完成標準</h2>
+<ol><li>Liberty HTTPS 提供本次自簽憑證，IP SAN 與憑證指紋驗證通過。</li><li>一般重跑未達門檻時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下腳本、排程、部署後憑證資訊與簡短交接；有舊憑證才附前後序號。</li></ol>
+<h2>延伸練習（不計入 60 分鐘）</h2>
+<ul><li>以錯誤憑證路徑測試失敗保護，確認不覆蓋線上 keystore；進一步練習部署失敗後還原。</li><li>AGENTS.md、Slash Command、可重用 Skill 與 Frontend Slides 簡報。</li></ul>
+<h2>Cheatsheet：實作流程與檢查點</h2>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>找出憑證／keystore 路徑，有原憑證才記錄</td></tr><tr><td>05–15 分</td><td>產生憑證</td><td>自簽簽章、IP SAN 與私鑰配對正確</td></tr><tr><td>15–32 分</td><td>建立換證腳本</td><td>語法通過，具到期判斷及備份</td></tr><tr><td>32–45 分</td><td>實測與排程</td><td>序號變更、重跑 skip、cron 已設定</td></tr><tr><td>45–55 分</td><td>驗證排程環境</td><td>精簡環境執行成功，服務正常</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>腳本、排程與部署後憑證資訊（有舊憑證才附前後序號）齊全</td></tr></table></div></main></body></html>
