@@ -49,7 +49,7 @@ Bob 在學員電腦使用；Vault Agent、Shell 或 Ansible 在該組 Liberty VM
 | Liberty AdminCenter | `https://<IP>:9443/adminCenter/`（`<IP>` 換成自己 Liberty VM 的 IP）；帳號／密碼：`admin`／`admin123456` |
 | Vault Server | 位於 `vault` VM，API Port：8200；Web UI：[https://128.168.136.176:8200/ui](https://128.168.136.176:8200/ui)；帳號／密碼：`admin`／`admin123456` |
 | 預裝工具 | OpenSSL、keytool、curl、Vault CLI、Ansible、Python 3；Agent 路線使用 Vault Agent |
-| 課堂工作目錄 | `~/clm-workshop/`，內含講師提供的環境設定與骨架 |
+| 課堂工作目錄 | `~/clm-workshop/`，由學員在 Liberty VM 上自行建立（`mkdir -p ~/clm-workshop`） |
 
 ### 如何連線
 
