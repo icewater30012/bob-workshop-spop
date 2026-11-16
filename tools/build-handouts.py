@@ -74,6 +74,7 @@ for label,stars in [('進階','⭐⭐⭐⭐'),('中高階','⭐⭐⭐'),('中階
 home='<section id="home"><div class="overview-info">'+render(info)+'</div><!-- overview-info-end --><h2>選擇一個組合，完成一條路線</h2><p class="muted">每組四選一，各 60 分鐘。星等為四條路線的相對難度（⭐～⭐⭐⭐⭐）。</p>'+cards+'</section>'
 s=re.sub(r'<section id="home">.*?</section>',lambda m:home,s,count=1,flags=re.S)
 # Also make footer links browser-readable.
+s=re.sub(r'<a href="INSTRUCTOR\.(md|html)">[^<]*</a>(?: · )?','',s)
 s=s.replace('href="INSTRUCTOR.md"','href="INSTRUCTOR.html"').replace('href="README.md"','href="README.html"').replace('Markdown 總覽','完整總覽')
 s=re.sub(r'<title>.*?</title>','<title>IBM Bob workshop｜SP／OP 憑證自動化</title>',s,count=1)
 # Resolve fragments inside the active Part as well as top-level tabs.

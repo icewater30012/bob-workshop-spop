@@ -46,9 +46,9 @@ Bob 在學員電腦使用；部署工具與 Liberty 在該組 VM 執行。學員
 
 ```bash
 # 在學員電腦查詢該組 SSH config 的有效 HostName；此例為第 1 組
-ssh -G liberty-1 | awk '$1 == "hostname" {print $2; exit}'
+ssh -G liberty1 | awk '$1 == "hostname" {print $2; exit}'
 # 記下輸出的 VM IP，再登入同一台 VM
-ssh liberty-1
+ssh liberty1
 # 以下在 Liberty VM 執行，自行建立本課工作目錄
 mkdir -p ~/clm-workshop
 cd ~/clm-workshop
@@ -73,7 +73,7 @@ openssl version
 
 **開始時沒有 HTTPS 或憑證也可以做。** 部署前只檢查 Liberty 設定；已提供憑證才記錄舊序號。部署完成後，才檢查服務是否送出本次產生的憑證。
 
-**Liberty VM IP 從學員電腦的 SSH config 查詢**（用前面的 `ssh -G liberty-1`，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 `TLS_HOST`，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 `127.0.0.1` IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。
+**Liberty VM IP 從學員電腦的 SSH config 查詢**（用前面的 `ssh -G liberty1`，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 `TLS_HOST`，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 `127.0.0.1` IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。
 
 **給 Bob 的部署要求：**
 
@@ -285,6 +285,7 @@ PKI leaf 輪換是重新簽發；AppRole Token renewal 是另一件事。短 TTL
 
 ## 延伸練習（不計入 60 分鐘）
 
+- Cheat sheet 參考：[Bob Cheat Sheet](https://owhc.github.io/bob-cheatsheet/bob-lite-ver.html)
 - 使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。
 - 完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。
 

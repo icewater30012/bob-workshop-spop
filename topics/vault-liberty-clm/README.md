@@ -21,31 +21,33 @@
 - 用 Bob 產生 Agent 設定、Shell 或 Ansible，自動部署至 Liberty。
 - 驗證線上憑證、重複執行結果，並確認重複執行結果。
 
-**延伸練習：** 用 Bob 建立完整 PKI、AGENTS.md、`/check-cert` Slash Command、可重用 Skill，以及 Frontend Slides 成果簡報。
+**延伸練習：** 用 Bob 建立完整 PKI、AGENTS.md、`/check-cert` Slash Command、可重用 Skill，以及 Frontend Slides 成果簡報。 Cheat sheet 參考：[Bob Cheat Sheet](https://owhc.github.io/bob-cheatsheet/bob-lite-ver.html)
 
 ## 實作環境與各組分配
 
-**IBM TechZone｜1 台共用 Vault＋7 台 Liberty。各組只操作自己的 Liberty。**
+**IBM TechZone｜1 台共用 Vault＋8 台 Liberty。各組只操作自己的 Liberty。**
 
 | VM 編號 | 用途與組別分配 | 規格（每台） | Bob IDE Terminal 連線指令 |
 |---|---|---|---|
-| `vault-server` | 各組共用 Vault Server，由講師管理 | 4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh vault` |
-| `liberty-1` | 第 1 組專用 Liberty | 4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh liberty-1` |
-| `liberty-2` | 第 2 組專用 Liberty | 4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh liberty-2` |
-| `liberty-3` | 第 3 組專用 Liberty | 4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh liberty-3` |
-| `liberty-4` | 第 4 組專用 Liberty | 4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh liberty-4` |
-| `liberty-5` | 第 5 組專用 Liberty | 4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh liberty-5` |
-| `liberty-6` | 第 6 組專用 Liberty | 4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh liberty-6` |
-| `liberty-7` | 第 7 組專用 Liberty | 4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh liberty-7` |
+| `vault-server` | 各組共用 Vault Server，由講師管理 | RHEL 9.6／4 vCPU／16 GB RAM／100 GB 磁碟 | `ssh vault` |
+| `liberty1` | 第 1 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty1` |
+| `liberty2` | 第 2 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty2` |
+| `liberty3` | 第 3 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty3` |
+| `liberty4` | 第 4 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty4` |
+| `liberty5` | 第 5 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty5` |
+| `liberty6` | 第 6 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty6` |
+| `liberty7` | 第 7 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty7` |
+| `liberty8` | 第 8 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty8` |
 
 Bob 在學員電腦使用；Vault Agent、Shell 或 Ansible 在該組 Liberty VM 執行。OpenSSL 路線不使用 Vault。
 
 | 軟體與位置 | 說明 |
 |---|---|
-| 作業系統 | RHEL 9 |
+| 作業系統 | RHEL 9.6 |
 | Java | OpenJDK 17 |
 | Liberty | `/opt/ibm/wlp`；Server：`defaultServer`；HTTPS：9443 |
-| Vault Server | 位於 `vault` VM，API Port：8200；Liberty VM 使用講師提供的內網位址 |
+| Liberty AdminCenter | `https://<IP>:9443/adminCenter/`（`<IP>` 換成自己 Liberty VM 的 IP）；帳號／密碼：`admin`／`admin123456` |
+| Vault Server | 位於 `vault` VM，API Port：8200；Web UI：[https://128.168.136.176:8200/ui](https://128.168.136.176:8200/ui)；帳號／密碼：`admin`／`admin123456` |
 | 預裝工具 | OpenSSL、keytool、curl、Vault CLI、Ansible、Python 3；Agent 路線使用 Vault Agent |
 | 課堂工作目錄 | `~/clm-workshop/`，內含講師提供的環境設定與骨架 |
 
@@ -54,7 +56,7 @@ Bob 在學員電腦使用；Vault Agent、Shell 或 Ansible 在該組 Liberty VM
 IP、帳號與 SSH key 已匯入 Bob 的 SSH config。在 **Bob IDE Terminal** 輸入表格中的 SSH 指令即可登入。
 
 ```bash
-ssh liberty-1   # 第 1 組；其他組改用自己的編號
+ssh liberty1   # 第 1 組；其他組改用自己的編號
 ```
 
 需要登入共用 Vault 時，在學員電腦的另一個 Terminal 執行 `ssh vault`。輸入 `exit` 離開遠端主機。Vault API 位址與憑證路徑依各 Part 步驟確認。
@@ -71,7 +73,6 @@ ssh liberty-1   # 第 1 組；其他組改用自己的編號
 
 由一位操作員負責部署，避免同時修改 keystore；共用 Vault 設定由講師管理。Token、私鑰與密碼不要貼進 Bob 對話。
 
-[講師準備清單](INSTRUCTOR.md)
 
 ## 選擇組合
 

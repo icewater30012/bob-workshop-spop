@@ -10,8 +10,8 @@
 
 ## 環境與權限
 
-- 沿用一台共用 Vault 與七台各組 Liberty VM 的規劃。OpenSSL 路線不依賴 Vault。
-- 主機規格：Vault 與每台 Liberty 均為 4 vCPU／16 GB RAM／100 GB 磁碟。SSH 別名為 `vault` 與 `liberty-1`～`liberty-7`；IP、user、key 已匯入學員 Bob 的 SSH config。
+- 沿用一台共用 Vault 與八台各組 Liberty VM 的規劃。OpenSSL 路線不依賴 Vault。
+- 主機規格：Vault：RHEL 9.6／4 vCPU／16 GB RAM／100 GB 磁碟；每台 Liberty：RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟。SSH 別名為 `vault` 與 `liberty1`～`liberty8`；IP、user、key 已匯入學員 Bob 的 SSH config。
 - 記錄實際 RHEL、JDK、Liberty、Vault、Agent、Ansible 與 OpenSSL 版本，課前確認相容性；不沿用舊教材未驗證的固定版本。
 - Liberty HTTPS 預先啟動，提供可回應成功狀態的測試頁、基準憑證、備份與環境重置程序。
 - 預裝所需 CLI；權限與服務控制以各組執行帳號試跑。不要讓學員花時間處理安裝、sudo、systemd 與目錄權限。

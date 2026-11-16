@@ -7,9 +7,9 @@
 <h2>操作前準備</h2>
 <p>在 Bob IDE Terminal 登入自己的 Liberty VM，以第 1 組為例：</p>
 <pre><code class="language-bash"># 在學員電腦查詢該組 SSH config 的有效 HostName；此例為第 1 組
-ssh -G liberty-1 | awk &#x27;$1 == &quot;hostname&quot; {print $2; exit}&#x27;
+ssh -G liberty1 | awk &#x27;$1 == &quot;hostname&quot; {print $2; exit}&#x27;
 # 記下輸出的 VM IP，再登入同一台 VM
-ssh liberty-1
+ssh liberty1
 # 以下在 Liberty VM 執行，自行建立本課工作目錄
 mkdir -p ~/clm-workshop
 cd ~/clm-workshop
@@ -24,7 +24,7 @@ openssl version</code></pre>
 <p>缺少 CA、role 或認證資料時，先向講師確認。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。</p>
 <h3>部署前確認、部署後驗證</h3>
 <p><strong>開始時沒有 HTTPS 或憑證也可以做。</strong> 部署前只檢查 Liberty 設定；已提供憑證才記錄舊序號。部署完成後，才檢查服務是否送出本次產生的憑證。</p>
-<p><strong>Liberty VM IP 從學員電腦的 SSH config 查詢</strong>（用前面的 <code>ssh -G liberty-1</code>，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 <code>TLS_HOST</code>，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 <code>127.0.0.1</code> IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。</p>
+<p><strong>Liberty VM IP 從學員電腦的 SSH config 查詢</strong>（用前面的 <code>ssh -G liberty1</code>，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 <code>TLS_HOST</code>，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 <code>127.0.0.1</code> IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。</p>
 <p><strong>給 Bob 的部署要求：</strong></p>
 <pre><code class="language-text">請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
 IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。</code></pre>
@@ -149,6 +149,6 @@ crontab -l</code></pre>
 <h2>60 分鐘內的完成標準</h2>
 <ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>重跑未到期時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
-<ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
+<ul><li>Cheat sheet 參考：<a href="https://owhc.github.io/bob-cheatsheet/bob-lite-ver.html">Bob Cheat Sheet</a></li><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
 <div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>基準資料與 API 路徑。</td></tr><tr><td>05–15 分</td><td>取得配對憑證</td><td>通過配對與鏈驗證的 PEM 檔。</td></tr><tr><td>15–32 分</td><td>建立輪換腳本</td><td>可執行的 cert-rotate.sh。</td></tr><tr><td>32–45 分</td><td>測試與排程</td><td>部署驗證、skip 紀錄與 crontab。</td></tr><tr><td>45–55 分</td><td>驗證排程執行環境</td><td>精簡環境手動測試成功，未到期時 skip。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄。</td></tr></table></div></main></body></html>
