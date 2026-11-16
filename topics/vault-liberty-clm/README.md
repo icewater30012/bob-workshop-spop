@@ -44,7 +44,7 @@ Bob 在學員電腦使用；Vault Agent、Shell 或 Ansible 在該組 Liberty VM
 | 軟體與位置 | 說明 |
 |---|---|
 | 作業系統 | RHEL 9.6 |
-| Java | OpenJDK 17 |
+| Java | OpenJDK 21.0.13 |
 | Liberty | `/opt/ibm/wlp`；Server：`defaultServer`；HTTPS：9443 |
 | Liberty AdminCenter | `https://<IP>:9443/adminCenter/`（`<IP>` 換成自己 Liberty VM 的 IP）；帳號／密碼：`admin`／`admin123456` |
 | Vault Server | 位於 `vault` VM，API Port：8200；Web UI：[https://128.168.136.176:8200/ui](https://128.168.136.176:8200/ui)；帳號／密碼：`admin`／`admin123456` |
