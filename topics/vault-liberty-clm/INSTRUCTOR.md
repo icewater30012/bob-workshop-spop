@@ -15,7 +15,7 @@
 - 記錄實際 RHEL、JDK、Liberty、Vault、Agent、Ansible 與 OpenSSL 版本，課前確認相容性；不沿用舊教材未驗證的固定版本。
 - Liberty HTTPS 預先啟動，提供可回應成功狀態的測試頁、基準憑證、備份與環境重置程序。
 - 預裝所需 CLI；權限與服務控制以各組執行帳號試跑。不要讓學員花時間處理安裝、sudo、systemd 與目錄權限。
-- 每組提供 `~/clm-workshop/env.sh` 與各路線設定骨架，包含實際 CA_FILE、TLS_HOST（IP）、TLS_PORT、SERVER_NAME、Liberty 路徑、live keystore、服務控制命令、密碼檔、日誌及暫存目錄。Ansible 另提供對應 vars 範本。
+- `~/clm-workshop/` 由學員在 Liberty VM 自行建立；教材不預先提供 env.sh 或程式骨架。課前備妥並確認實際 CA_FILE、TLS_HOST（IP）、TLS_PORT、SERVER_NAME、Liberty 路徑、live keystore、服務控制命令、密碼檔位置，學員依步驟向 Bob 確認後使用。
 - Vault 事先建立 Root／Intermediate CA、每組 PKI role 與最小權限認證。每組路徑隔離，不發 Root Token，不讓學員改共用 CA、mount、policy 或 auth method。
 - Vault 使用實際內網位址與受信任 TLS 連線；將 CA 信任設定提供給 CLI 與 Agent。localhost 只用於該組 Liberty。
 - Part 1 預建 AppRole、ID 檔案與可持續執行的 Agent 設定骨架，確認 Secret ID 的消耗／移除行為與重新啟動方式。
@@ -23,7 +23,7 @@
 - Part 2 提供每組獨立且涵蓋課程時長的受限 Token；交接時要求指出到期後處理方式。
 - OpenSSL 路線由學員自行建立測試 CA，效期與輪換門檻自行決定；後續輪換沿用 CA，私鑰僅留在該組 VM。
 - OpenSSL 路線不固定 leaf 效期；輪換門檻須小於憑證效期。確認自訂 CA、CN 及 SAN 適用 curl 與 s_client 驗證。
-- 提供程式骨架與各階段參考完成檔；課前以同映像、同權限從頭執行。此 repo 目前提供的是教材與提示，並未附上經 VM 實測的程式骨架或完成腳本，授課前須補齊。
+- 課前以同映像、同權限從頭執行各路線。此 repo 目前提供的是教材與提示，並未附上經 VM 實測的程式骨架或參考完成檔；若需於超時時救援，授課前須自行備妥。
 
 ## 控時與救援
 
