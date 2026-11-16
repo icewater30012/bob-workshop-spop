@@ -54,7 +54,7 @@ def document(title,body):return '<!doctype html><html lang="zh-Hant"><head><meta
 for n,p in enumerate(sorted((BASE/'parts').glob('part-*.md')),1):
  pat=rf'<section id="part-{n}".*?</section>'
  section=re.search(pat,s,re.S)[0]
- svg=re.search(r'<svg\b.*?</svg>',section,re.S)[0]
+ svg=(ROOT/f'tools/diagrams/part-{n}.svg').read_text().strip()
  svg=svg.replace('學員電腦與 Liberty VM；不需要 Vault Server VM','學員電腦與 Liberty VM')
  svg=re.sub(r'<text\b[^>]*>不需要 Vault Server VM</text>', '', svg)
  md=p.read_text();body=render(md,svg)

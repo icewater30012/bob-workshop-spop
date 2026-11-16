@@ -10,21 +10,25 @@
 flowchart LR
   subgraph STUDENT["學員電腦"]
     direction TB
-    B["IBM Bob IDE"]
-    T["SSH 終端／HTTPS 測試"]
+    B["IBM Bob IDE／SSH Terminal／HTTPS 測試"]
+    A1["瀏覽器：開啟 Liberty AdminCenter"]
   end
+  E["HTTPS :9443／VM 入口"]
   subgraph LIBERTY["Liberty VM：各組獨立"]
-    direction TB
-  A["Ansible／localhost connection"]
-  O["OpenSSL ＋ 測試 CA"]
-  K["PKCS12 keystore"]
-  L["Liberty HTTPS :9443"]
-  A -->|本機呼叫| O
-  A -->|本機寫入| K
-  L ---|讀取| K
+    A["Ansible Playbook：localhost connection 部署"]
+    O["OpenSSL：建立自簽 CA 並簽發憑證"]
+    subgraph APP["Liberty server"]
+      L["TLS 設定"]
+      K["PKCS12 keystore 檔案"]
+      L ---|讀取| K
+    end
+    A -->|呼叫| O
+    A -->|部署檔案| K
   end
-  T -->|SSH：操作與傳送檔案| A
-  T -->|HTTPS :9443：驗證| L
+  B -->|SSH：操作與傳送檔案| A
+  B -->|HTTPS 連線與驗證| E
+  A1 -->|HTTPS /adminCenter/| E
+  E --> L
 ```
 
 Bob 在學員電腦使用；部署工具與 Liberty 在該組 VM 執行。

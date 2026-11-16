@@ -9,11 +9,13 @@
 ```mermaid
 flowchart LR
   subgraph STUDENT["學員電腦"]
-    B["IBM Bob IDE／SSH Terminal"]
+    direction TB
+    B["IBM Bob IDE／SSH Terminal／HTTPS 測試"]
+    A1["瀏覽器：開啟 Liberty AdminCenter"]
   end
   E["HTTPS :9443／VM 入口"]
-  subgraph VM["Liberty VM：各組獨立"]
-    C["crontab ＋ Shell 腳本"]
+  subgraph LIBERTY["Liberty VM：各組獨立"]
+    C["crontab ＋ Shell 腳本：排程與部署"]
     O["OpenSSL：產生伺服器自簽憑證"]
     subgraph APP["Liberty server"]
       L["TLS 設定"]
@@ -24,7 +26,8 @@ flowchart LR
     C -->|部署檔案| K
   end
   B -->|SSH：操作與傳送檔案| C
-  B -->|HTTPS 連線| E
+  B -->|HTTPS 連線與驗證| E
+  A1 -->|HTTPS /adminCenter/| E
   E --> L
 ```
 

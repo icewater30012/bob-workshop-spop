@@ -10,22 +10,22 @@
 flowchart LR
   subgraph STUDENT["學員電腦"]
     direction TB
-    B["IBM Bob IDE"]
-    T["SSH 終端／HTTPS 測試"]
-    U["瀏覽器／Vault UI"]
+    B["IBM Bob IDE／SSH Terminal／HTTPS 測試"]
+    A1["瀏覽器：開啟 Liberty AdminCenter"]
+    U["瀏覽器：開啟 Vault Web UI"]
   end
+  E["HTTPS :9443／VM 入口"]
   subgraph LIBERTY["Liberty VM：各組獨立"]
-    direction TB
-  C["crontab"]
-  S["Shell 換證腳本"]
-  K["PKCS12 keystore"]
-  L["Liberty HTTPS :9443"]
-  C -->|排程執行| S
-  S -->|本機寫入| K
-  L ---|讀取| K
+    C["crontab ＋ Shell 腳本：排程與部署"]
+    VC["Vault CLI：以 Token 申請憑證"]
+    subgraph APP["Liberty server"]
+      L["TLS 設定"]
+      K["PKCS12 keystore 檔案"]
+      L ---|讀取| K
+    end
+    C -->|呼叫| VC
+    C -->|部署檔案| K
   end
-  T -->|SSH：操作與傳送檔案| S
-  T -->|HTTPS :9443：驗證| L
   subgraph VAULT["Vault Server VM：講師管理／各組共用"]
     direction TB
     V["Vault Server :8200"]
@@ -34,8 +34,12 @@ flowchart LR
     V --- P
     V --- W
   end
-  S <-->|Vault API：Token 認證與簽發| V
-  U -->|HTTP 或 HTTPS：查看憑證狀態| W
+  B -->|SSH：操作與傳送檔案| C
+  B -->|HTTPS 連線與驗證| E
+  A1 -->|HTTPS /adminCenter/| E
+  VC <-->|Vault API：Token 簽發| V
+  U -->|HTTPS：查看憑證狀態| W
+  E --> L
 ```
 
 Bob 在學員電腦使用；部署工具與 Liberty 在該組 VM 執行。學員可透過瀏覽器開啟講師提供的 Vault UI 網址，查看權限內的憑證狀態。
