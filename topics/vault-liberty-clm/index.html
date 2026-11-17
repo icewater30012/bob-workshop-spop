@@ -38,7 +38,7 @@ hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version</code></pre>
-<p>Vault API 位址為 <code>https://128.168.136.176:8200</code>（<code>export VAULT_ADDR=https://128.168.136.176:8200</code>）。你的 Vault Token 已放在 Liberty VM 的 <code>~/clm-workshop/vault-token</code>（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。 PKI mount 與 role 名稱、信任 CA 向講師確認。AppRole 由你在步驟 2 自行建立：用上述 Token 建立 AppRole，Role ID 與 Secret ID 各存成 0600 本機檔案；Secret ID 是 Agent auto-auth 使用的認證，值不要貼進對話。</p>
+<p>Vault API 位址為 <code>https://128.168.136.176:8200</code>（<code>export VAULT_ADDR=https://128.168.136.176:8200</code>）；Vault 使用自簽憑證，已將其 CA 放在 <code>/home/vpcuser/clm-workshop/vault-api-ca.pem</code>，並設好 <code>VAULT_CACERT</code>（重新登入後生效，或 <code>source ~/.bashrc</code>）。你的 Vault Token 已放在 Liberty VM 的 <code>/home/vpcuser/clm-workshop/vault-token</code>（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。PKI 已備妥：secrets engine mount 為 <code>pki_int</code>（Workshop Intermediate CA，Root 為 Workshop Root CA），簽發 role 為 <code>liberty-server</code>（允許 IP SAN、不需 CN、預設 TTL 1 小時、上限 168 小時，申請時可用 <code>ttl</code> 指定較短值，例如 3 分鐘）；簽發 policy 名稱為 <code>pki-issue</code>。驗證用的 CA 鏈（Root＋Intermediate）在 <code>/home/vpcuser/clm-workshop/pki-ca-chain.pem</code>，即 <code>check_cert</code> 的 <code>CA_FILE</code>。AppRole 由你在步驟 2 自行建立：用上述 Token 建立 AppRole（policy 用 <code>pki-issue</code>），Role ID 與 Secret ID 各存成 0600 本機檔案；Secret ID 是 Agent auto-auth 使用的認證，值不要貼進對話。</p>
 <p><strong>先讓 Bob 確認實際環境：</strong></p>
 <pre><code class="language-text">請協助檢查 Liberty server.xml，確認是否已設定 HTTPS、port 與 keystore；若已有憑證才讀取其 SAN，並確認服務控制方式，只讀公開憑證與設定，不顯示私鑰或密碼。
 請列出本路線所需檔案與認證的位置，缺少時先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。工作目錄是現在建立的 ~/clm-workshop，Agent 用 HCL 指定實際路徑，hook 使用明確參數；請依確認結果給完整執行命令。</code></pre>
@@ -55,8 +55,8 @@ IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1�
 <pre><code class="language-bash">set -o pipefail
 TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
 TLS_PORT=9443 # 以實際設定為準
-CA_FILE=&#x27;/home/vpcuser/clm-workshop/ca.crt&#x27; # Bob 產出後確認實際檔名
-LEAF_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # 同上
+CA_FILE=&#x27;/home/vpcuser/clm-workshop/pki-ca-chain.pem&#x27;
+LEAF_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # 部署時由 hook 拆出的 leaf；以 Bob 產出的實際檔名為準
 
 record_baseline() (
   set -o pipefail
@@ -88,7 +88,7 @@ check_cert() (
 </details>
 <p><code>record_baseline</code> 無法取得憑證時，先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。<code>check_cert</code> 失敗則查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</p>
 <h3>Vault 簽發設定</h3>
-<p>確認該組 role 允許 IP SAN（<code>allow_ip_sans=true</code>），簽發請求的 <code>ip_sans</code> 帶入 SSH config 查到的 VM IP 與 <code>127.0.0.1</code>。純 IP 測試可由講師將該組 role 設為 <code>require_cn=false</code>，並省略 CN；若保留必填 CN，使用 role 允許的標籤並避免自動加入 DNS SAN（<code>exclude_cn_from_sans=true</code>）。共用 role 由講師確認，不由學員任意修改。這是私有 PKI 的 role 權限，不是 DNS challenge。</p>
+<p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
 <p>檢查 HTTPS／keystore 設定，記錄預設憑證的序號。確認 Agent 尚未執行。</p>
@@ -109,7 +109,7 @@ record_baseline</code></pre>
 <h3>2. 完成 Agent 設定｜12 分鐘</h3>
 <p>分兩段：2a 用你的 Vault Token 建立本組 AppRole（policy 只需 PKI 簽發權限），Role ID、Secret ID 存成 0600 檔案；2b 請 Bob 產生 auto-auth 與 template 設定。</p>
 <p><strong>給 Bob 的提示：</strong></p>
-<pre><code class="language-text">【2a】請用 /home/vpcuser/clm-workshop/vault-token 建立本組 AppRole（policy 只允許該 PKI role 簽發），將 Role ID、Secret ID 各寫入 /home/vpcuser/clm-workshop/ 下的 0600 檔案，不要顯示值。
+<pre><code class="language-text">【2a】請用 /home/vpcuser/clm-workshop/vault-token 建立本組 AppRole（policy 用 pki-issue（只允許 pki_int/issue/liberty-server 簽發）），將 Role ID、Secret ID 各寫入 /home/vpcuser/clm-workshop/ 下的 0600 檔案，不要顯示值。
 【2b】接著產生 Agent 設定檔 liberty-agent.hcl 與 template（路徑一律用 /home/vpcuser/clm-workshop/ 絕對路徑）：AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。使用 pkiCert，單次簽發輸出同一份 PEM bundle，包含 leaf、私鑰與 CA 鏈。hook 指向 deploy-hook.sh（步驟 3 建立），只在成功渲染後執行；設定執行逾時。不要把私鑰分成獨立簽發的 template。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">vault agent -help
@@ -126,7 +126,7 @@ chmod 700 ./deploy-hook.sh
 # hook 由 Agent 成功渲染後觸發，勿在 bundle 尚未產生前執行</code></pre>
 <p><strong>檢查點：</strong> hook 與首次部署（換掉預設憑證）紀錄。</p>
 <h3>4. 觀察自動輪換｜13 分鐘</h3>
-<p>啟動 Agent，使用講師確認可用的短 TTL 測試 role（建議 3 分鐘），持續觀察約兩個週期及線上憑證序號。</p>
+<p>啟動 Agent，在 template 的 pkiCert 指定 <code>ttl=3m</code>（role 上限 168 小時，3 分鐘可行），持續觀察約兩個週期及線上憑證序號。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請檢查 Agent log、template 與 hook 執行紀錄，解釋重新簽發與 Token renewal 的不同。確認線上序號跟 bundle 的 leaf 相同；不要以 Agent 程序存活作為換證成功依據。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
@@ -195,7 +195,7 @@ hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version</code></pre>
-<p>Vault API 位址為 <code>https://128.168.136.176:8200</code>（<code>export VAULT_ADDR=https://128.168.136.176:8200</code>）。你的 Vault Token 已放在 Liberty VM 的 <code>/home/vpcuser/clm-workshop/vault-token</code>（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。 PKI mount 與 role 名稱、信任 CA 向講師確認。</p>
+<p>Vault API 位址為 <code>https://128.168.136.176:8200</code>（<code>export VAULT_ADDR=https://128.168.136.176:8200</code>）；Vault 使用自簽憑證，已將其 CA 放在 <code>/home/vpcuser/clm-workshop/vault-api-ca.pem</code>，並設好 <code>VAULT_CACERT</code>（重新登入後生效，或 <code>source ~/.bashrc</code>）。你的 Vault Token 已放在 Liberty VM 的 <code>/home/vpcuser/clm-workshop/vault-token</code>（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。PKI 已備妥：secrets engine mount 為 <code>pki_int</code>（Workshop Intermediate CA，Root 為 Workshop Root CA），簽發 role 為 <code>liberty-server</code>（允許 IP SAN、不需 CN、預設 TTL 1 小時、上限 168 小時，申請時可用 <code>ttl</code> 指定較短值，例如 3 分鐘）；簽發 policy 名稱為 <code>pki-issue</code>。驗證用的 CA 鏈（Root＋Intermediate）在 <code>/home/vpcuser/clm-workshop/pki-ca-chain.pem</code>，即 <code>check_cert</code> 的 <code>CA_FILE</code>。</p>
 <p><strong>先讓 Bob 確認實際環境：</strong></p>
 <pre><code class="language-text">請協助檢查 Liberty server.xml，確認是否已設定 HTTPS、port 與 keystore；若已有憑證才讀取其 SAN，並確認服務控制方式，只讀公開憑證與設定，不顯示私鑰或密碼。
 請列出本路線所需檔案與認證的位置，缺少時先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。工作目錄是現在建立的 ~/clm-workshop，產出腳本用明確參數，Token 從受限本機檔案讀取；請依確認結果給完整執行命令。</code></pre>
@@ -212,8 +212,8 @@ IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1�
 <pre><code class="language-bash">set -o pipefail
 TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
 TLS_PORT=9443 # 以實際設定為準
-CA_FILE=&#x27;/home/vpcuser/clm-workshop/ca.crt&#x27; # Bob 產出後確認實際檔名
-LEAF_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # 同上
+CA_FILE=&#x27;/home/vpcuser/clm-workshop/pki-ca-chain.pem&#x27;
+LEAF_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # request-cert.sh 拆出的 leaf；以 Bob 產出的實際檔名為準
 
 record_baseline() (
   set -o pipefail
@@ -245,7 +245,7 @@ check_cert() (
 </details>
 <p><code>record_baseline</code> 無法取得憑證時，先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。<code>check_cert</code> 失敗則查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</p>
 <h3>Vault 簽發設定</h3>
-<p>確認該組 role 允許 IP SAN（<code>allow_ip_sans=true</code>），簽發請求的 <code>ip_sans</code> 帶入 SSH config 查到的 VM IP 與 <code>127.0.0.1</code>。純 IP 測試可由講師將該組 role 設為 <code>require_cn=false</code>，並省略 CN；若保留必填 CN，使用 role 允許的標籤並避免自動加入 DNS SAN（<code>exclude_cn_from_sans=true</code>）。共用 role 由講師確認，不由學員任意修改。這是私有 PKI 的 role 權限，不是 DNS challenge。</p>
+<p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
 <p>檢查 HTTPS／keystore 設定，有舊憑證才記錄；確認 Vault 內網連線及每組 role 名稱。</p>

@@ -22,7 +22,7 @@ hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version</code></pre>
-<p>Vault API 位址為 <code>https://128.168.136.176:8200</code>（<code>export VAULT_ADDR=https://128.168.136.176:8200</code>）。你的 Vault Token 已放在 Liberty VM 的 <code>/home/vpcuser/clm-workshop/vault-token</code>（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。 PKI mount 與 role 名稱、信任 CA 向講師確認。</p>
+<p>Vault API 位址為 <code>https://128.168.136.176:8200</code>（<code>export VAULT_ADDR=https://128.168.136.176:8200</code>）；Vault 使用自簽憑證，已將其 CA 放在 <code>/home/vpcuser/clm-workshop/vault-api-ca.pem</code>，並設好 <code>VAULT_CACERT</code>（重新登入後生效，或 <code>source ~/.bashrc</code>）。你的 Vault Token 已放在 Liberty VM 的 <code>/home/vpcuser/clm-workshop/vault-token</code>（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。PKI 已備妥：secrets engine mount 為 <code>pki_int</code>（Workshop Intermediate CA，Root 為 Workshop Root CA），簽發 role 為 <code>liberty-server</code>（允許 IP SAN、不需 CN、預設 TTL 1 小時、上限 168 小時，申請時可用 <code>ttl</code> 指定較短值，例如 3 分鐘）；簽發 policy 名稱為 <code>pki-issue</code>。驗證用的 CA 鏈（Root＋Intermediate）在 <code>/home/vpcuser/clm-workshop/pki-ca-chain.pem</code>，即 <code>check_cert</code> 的 <code>CA_FILE</code>。</p>
 <p><strong>先讓 Bob 確認實際環境：</strong></p>
 <pre><code class="language-text">請協助檢查 Liberty server.xml，確認是否已設定 HTTPS、port 與 keystore；若已有憑證才讀取其 SAN，並確認服務控制方式，只讀公開憑證與設定，不顯示私鑰或密碼。
 請列出本路線所需檔案與認證的位置，缺少時先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。工作目錄是現在建立的 ~/clm-workshop，產出腳本用明確參數，Token 從受限本機檔案讀取；請依確認結果給完整執行命令。</code></pre>
@@ -39,8 +39,8 @@ IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1�
 <pre><code class="language-bash">set -o pipefail
 TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
 TLS_PORT=9443 # 以實際設定為準
-CA_FILE=&#x27;/home/vpcuser/clm-workshop/ca.crt&#x27; # Bob 產出後確認實際檔名
-LEAF_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # 同上
+CA_FILE=&#x27;/home/vpcuser/clm-workshop/pki-ca-chain.pem&#x27;
+LEAF_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # request-cert.sh 拆出的 leaf；以 Bob 產出的實際檔名為準
 
 record_baseline() (
   set -o pipefail
@@ -72,7 +72,7 @@ check_cert() (
 </details>
 <p><code>record_baseline</code> 無法取得憑證時，先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。<code>check_cert</code> 失敗則查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</p>
 <h3>Vault 簽發設定</h3>
-<p>確認該組 role 允許 IP SAN（<code>allow_ip_sans=true</code>），簽發請求的 <code>ip_sans</code> 帶入 SSH config 查到的 VM IP 與 <code>127.0.0.1</code>。純 IP 測試可由講師將該組 role 設為 <code>require_cn=false</code>，並省略 CN；若保留必填 CN，使用 role 允許的標籤並避免自動加入 DNS SAN（<code>exclude_cn_from_sans=true</code>）。共用 role 由講師確認，不由學員任意修改。這是私有 PKI 的 role 權限，不是 DNS challenge。</p>
+<p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
 <p>檢查 HTTPS／keystore 設定，有舊憑證才記錄；確認 Vault 內網連線及每組 role 名稱。</p>

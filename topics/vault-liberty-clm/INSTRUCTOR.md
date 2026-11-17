@@ -17,10 +17,9 @@
 - 預裝所需 CLI；權限與服務控制以各組執行帳號試跑。不要讓學員花時間處理安裝、sudo、systemd 與目錄權限。
 - `~/clm-workshop/` 由學員在 Liberty VM 自行建立；教材不預先提供 env.sh 或程式骨架。課前備妥並確認實際 CA_FILE、TLS_HOST（IP）、TLS_PORT、SERVER_NAME、Liberty 路徑、live keystore、服務控制命令、密碼檔位置，學員依步驟向 Bob 確認後使用。
 - Vault 事先建立 Root／Intermediate CA、每組 PKI role 與最小權限認證。每組路徑隔離，不發 Root Token，不讓學員改共用 CA、mount、policy 或 auth method。
-- Vault 使用實際內網位址與受信任 TLS 連線；將 CA 信任設定提供給 CLI 與 Agent。localhost 只用於該組 Liberty。
-- Part 1 預建 AppRole、ID 檔案與可持續執行的 Agent 設定骨架，確認 Secret ID 的消耗／移除行為與重新啟動方式。
-- Part 1 另建專用短 TTL role（建議 3 分鐘），實測兩個自動輪換週期；確認 CA 效期、允許 TTL、Agent 版本與 pkiCert 行為。結束後恢復一般設定。
-- Part 2 提供每組獨立且涵蓋課程時長的受限 Token；交接時要求指出到期後處理方式。
+- Vault 已建 PKI：`pki`（Workshop Root CA）→ `pki_int`（Workshop Intermediate CA），role `liberty-server`（IP SAN、無需 CN、TTL 1h／上限 168h），policy `pki-issue`。各 VM 的 `~/clm-workshop/` 已放 `vault-token`、`pki-ca-chain.pem`（Root＋Intermediate，供驗證）、`vault-api-ca.pem`（Vault API 自簽憑證，`VAULT_CACERT` 已寫入 `~/.bashrc`）。
+- Part 1 的 AppRole 由學員自建（policy `pki-issue`）；3 分鐘短 TTL 由學員在 template 指定 `ttl=3m`。
+- Part 2 使用各組獨立、有效一週的 Token（policy `workshop`，可管理 `pki*`、`auth/approle/*`）。
 - OpenSSL 路線由學員自行建立測試 CA，效期與輪換門檻自行決定；後續輪換沿用 CA，私鑰僅留在該組 VM。
 - OpenSSL 路線不固定 leaf 效期；輪換門檻須小於憑證效期。確認自訂 CA、CN 及 SAN 適用 curl 與 s_client 驗證。
 - 課前以同映像、同權限從頭執行各路線。此 repo 目前提供的是教材與提示，並未附上經 VM 實測的程式骨架或參考完成檔；學員以 Bob 自行產出為準。

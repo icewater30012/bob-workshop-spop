@@ -62,7 +62,7 @@ whoami
 openssl version
 ```
 
-Vault API 位址為 `https://128.168.136.176:8200`（`export VAULT_ADDR=https://128.168.136.176:8200`）。你的 Vault Token 已放在 Liberty VM 的 `/home/vpcuser/clm-workshop/vault-token`（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。 PKI mount 與 role 名稱、信任 CA 向講師確認。
+Vault API 位址為 `https://128.168.136.176:8200`（`export VAULT_ADDR=https://128.168.136.176:8200`）；Vault 使用自簽憑證，已將其 CA 放在 `/home/vpcuser/clm-workshop/vault-api-ca.pem`，並設好 `VAULT_CACERT`（重新登入後生效，或 `source ~/.bashrc`）。你的 Vault Token 已放在 Liberty VM 的 `/home/vpcuser/clm-workshop/vault-token`（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。PKI 已備妥：secrets engine mount 為 `pki_int`（Workshop Intermediate CA，Root 為 Workshop Root CA），簽發 role 為 `liberty-server`（允許 IP SAN、不需 CN、預設 TTL 1 小時、上限 168 小時，申請時可用 `ttl` 指定較短值，例如 3 分鐘）；簽發 policy 名稱為 `pki-issue`。驗證用的 CA 鏈（Root＋Intermediate）在 `/home/vpcuser/clm-workshop/pki-ca-chain.pem`，即 `check_cert` 的 `CA_FILE`。
 
 **先讓 Bob 確認實際環境：**
 
@@ -95,8 +95,8 @@ IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1�
 set -o pipefail
 TLS_HOST='填入學員電腦SSH config查到的Liberty VM IP'
 TLS_PORT=9443 # 以實際設定為準
-CA_FILE='/home/vpcuser/clm-workshop/ca.crt' # Bob 產出後確認實際檔名
-LEAF_FILE='/home/vpcuser/clm-workshop/server.crt' # 同上
+CA_FILE='/home/vpcuser/clm-workshop/pki-ca-chain.pem'
+LEAF_FILE='/home/vpcuser/clm-workshop/server.crt' # request-cert.sh 拆出的 leaf；以 Bob 產出的實際檔名為準
 
 record_baseline() (
   set -o pipefail
@@ -133,7 +133,7 @@ check_cert() (
 
 ### Vault 簽發設定
 
-確認該組 role 允許 IP SAN（`allow_ip_sans=true`），簽發請求的 `ip_sans` 帶入 SSH config 查到的 VM IP 與 `127.0.0.1`。純 IP 測試可由講師將該組 role 設為 `require_cn=false`，並省略 CN；若保留必填 CN，使用 role 允許的標籤並避免自動加入 DNS SAN（`exclude_cn_from_sans=true`）。共用 role 由講師確認，不由學員任意修改。這是私有 PKI 的 role 權限，不是 DNS challenge。
+role `liberty-server` 已設定 `allow_ip_sans=true`、`require_cn=false`，簽發請求只要帶 `ip_sans`（SSH config 查到的 VM IP 與 `127.0.0.1`），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。
 
 ## 實作流程
 
