@@ -23,18 +23,18 @@ whoami
 openssl version</code></pre>
 <p>本 Part 直接產生 <strong>伺服器自簽憑證</strong>，由伺服器自己的私鑰簽署，不另外建立 CA 或 CA 憑證。憑證效期與輪換門檻自行決定，門檻需小於效期。</p>
 <h3>部署前確認、部署後驗證</h3>
-<p><strong>開始時沒有 HTTPS 或憑證也可以做。</strong> 部署前只檢查 Liberty 設定；已提供憑證才記錄舊序號。部署完成後，才檢查服務是否送出本次產生的憑證。</p>
+<p><strong>Liberty 目前已啟用 HTTPS，送出的是預設自簽憑證（<code>CN=localhost</code>，無 IP SAN）；本課要把它換成新憑證。</strong> 部署前先用 <code>record_baseline</code> 記錄舊序號；部署完成後，用 <code>check_cert</code> 確認服務送出的是本次產生的憑證。</p>
 <p><strong>Liberty VM IP 從學員電腦的 SSH config 查詢</strong>（用前面的 <code>ssh -G liberty1</code>，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 <code>TLS_HOST</code>，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 <code>127.0.0.1</code> IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。</p>
 <p><strong>給 Bob 的部署要求：</strong></p>
-<pre><code class="language-text">請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並用本次自簽憑證作為明確信任依據，驗證 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。</code></pre>
-<p>以下函式在目前 Terminal 定義一次；<code>record_baseline</code> 在步驟 1 使用，<code>check_cert</code> 在部署完成後使用。將本次伺服器憑證路徑換成實際輸出位置後，才執行 <code>check_cert</code>。這些變數只供驗證使用。</p>
+<pre><code class="language-text">本環境 Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）；第一次部署必須把它換成本次新憑證（不能因為已有憑證就 skip），之後的輪換才做到期判斷；替換前先備份舊 key.p12。若需要修改 server.xml 也要先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並用本次自簽憑證作為明確信任依據，驗證 IP SAN。
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本內一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）；公開憑證檔權限 0644（vpcuser 要能讀來驗證），私鑰 0600。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。</code></pre>
+<p>以下函式在目前 Terminal 定義一次；<code>record_baseline</code> 在步驟 1 使用，<code>check_cert</code> 在部署完成後使用。確認本次伺服器憑證的檔名與實際輸出一致後，才執行 <code>check_cert</code>。這些變數只供驗證使用。</p>
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
 <pre><code class="language-bash">set -o pipefail
 TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
 TLS_PORT=9443 # 以實際設定為準
-CERT_FILE=&#x27;/實際路徑/server.crt&#x27; # 本次產生的伺服器自簽憑證
+CERT_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # 本次產生的伺服器自簽憑證；Bob 產出後確認實際檔名
 
 record_baseline() (
   set -o pipefail
@@ -46,7 +46,7 @@ record_baseline() (
     cat before.txt
   else
     rm -f before.tmp before.txt
-    echo &#x27;尚未取得線上憑證，確認設定後走首次部署流程。&#x27;
+    echo &#x27;無法取得線上憑證：請確認 Liberty 已啟動、TLS_HOST 與 TLS_PORT 正確，並查看 baseline-tls.log。&#x27;
   fi
 )
 
@@ -67,7 +67,7 @@ check_cert() (
 <p><code>record_baseline</code> 無法取得憑證時，先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。<code>check_cert</code> 失敗則查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
-<p>先用 Bob 釐清自簽憑證與換證流程，再檢查這台 VM 的 HTTPS／keystore 設定；有舊憑證才記錄序號。</p>
+<p>先用 Bob 釐清自簽憑證與換證流程，再檢查這台 VM 的 HTTPS／keystore 設定，記錄預設憑證的序號。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
 1. TLS 憑證生命週期的申請、核發、部署、監控、輪換與撤銷。
@@ -77,7 +77,7 @@ check_cert() (
 5. Shell 與 crontab 如何檢查到期並執行輪換。
 
 再根據本次環境：
-請透過 SSH 檢查本組 Liberty 的 server.xml、執行狀態與既有公開憑證，列出：
+請檢查本組 Liberty 的 server.xml、執行狀態與既有公開憑證，列出：
 - HTTPS 是否啟用、port、keystore 路徑及格式。
 - 有憑證時才列出序號、SAN 與到期日；沒有則標示首次部署。
 - 本次 server.crt、server.key、keystore.p12 的規劃路徑及服務控制方式。
@@ -110,7 +110,7 @@ chmod 700 ./cert-rotate.sh</code></pre>
 <h3>4. 實測與排程｜13 分鐘</h3>
 <p>首次沒有 keystore 時，一般執行就應部署；已有憑證時才用強制模式測試一次輪換。完成後一般重跑應 skip，並加入每日 02:00 排程。</p>
 <p><strong>給 Bob 的提示：</strong></p>
-<pre><code class="language-text">請提供保留既有 crontab 的安裝方式，排程使用絕對路徑與腳本參數；用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。</code></pre>
+<pre><code class="language-text">請提供保留既有 crontab 的安裝方式（以 root 的 crontab 安裝；腳本與產出一律用 /home/vpcuser/clm-workshop/ 絕對路徑），排程使用絕對路徑與腳本參數；用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash"># 首次部署：沒有 keystore 就直接建立，不需 FORCE
 ./cert-rotate.sh
@@ -160,6 +160,6 @@ sudo crontab -l</code></pre>
 <h2>60 分鐘內的完成標準</h2>
 <ol><li>Liberty HTTPS 提供本次自簽憑證，IP SAN 與憑證指紋驗證通過。</li><li>一般重跑未達門檻時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下腳本、排程、部署後憑證資訊與簡短交接；有舊憑證才附前後序號。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
-<ul><li>Cheat sheet 參考：<a href="https://owhc.github.io/bob-cheatsheet/bob-lite-ver.html">Bob Cheat Sheet</a></li><li>以錯誤憑證路徑測試失敗保護，確認不覆蓋線上 keystore；進一步練習部署失敗後還原。</li><li>AGENTS.md、Slash Command、可重用 Skill 與 Frontend Slides 簡報。</li></ul>
+<ul><li>以錯誤憑證路徑測試失敗保護，確認不覆蓋線上 keystore；進一步練習部署失敗後還原。</li><li>AGENTS.md、Slash Command、可重用 Skill 與 Frontend Slides 簡報。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
-<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>找出憑證／keystore 路徑，有原憑證才記錄</td></tr><tr><td>05–15 分</td><td>產生憑證</td><td>自簽簽章、IP SAN 與私鑰配對正確</td></tr><tr><td>15–32 分</td><td>建立換證腳本</td><td>語法通過，具到期判斷及備份</td></tr><tr><td>32–45 分</td><td>實測與排程</td><td>序號變更、重跑 skip、cron 已設定</td></tr><tr><td>45–55 分</td><td>驗證排程環境</td><td>精簡環境執行成功，服務正常</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>腳本、排程與部署後憑證資訊（有舊憑證才附前後序號）齊全</td></tr></table></div></main></body></html>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>找出憑證／keystore 路徑，記錄預設憑證序號</td></tr><tr><td>05–15 分</td><td>產生憑證</td><td>自簽簽章、IP SAN 與私鑰配對正確</td></tr><tr><td>15–32 分</td><td>建立換證腳本</td><td>語法通過，具到期判斷及備份</td></tr><tr><td>32–45 分</td><td>實測與排程</td><td>序號變更、重跑 skip、cron 已設定</td></tr><tr><td>45–55 分</td><td>驗證排程環境</td><td>精簡環境執行成功，服務正常</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>腳本、排程與部署後憑證資訊（有舊憑證才附前後序號）齊全</td></tr></table></div></main></body></html>

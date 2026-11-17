@@ -27,19 +27,19 @@ openssl version</code></pre>
 請列出本路線所需檔案與認證的位置，缺少時先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。工作目錄是現在建立的 ~/clm-workshop，Ansible 用明確變數指定實際路徑；請依確認結果給完整執行命令。</code></pre>
 <p>測試 CA 由學員在步驟 2 建立，效期與輪換門檻自行決定；不需講師提供 CA。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。</p>
 <h3>部署前確認、部署後驗證</h3>
-<p><strong>開始時沒有 HTTPS 或憑證也可以做。</strong> 部署前只檢查 Liberty 設定；已提供憑證才記錄舊序號。部署完成後，才檢查服務是否送出本次產生的憑證。</p>
+<p><strong>Liberty 目前已啟用 HTTPS，送出的是預設自簽憑證（<code>CN=localhost</code>，無 IP SAN）；本課要把它換成新憑證。</strong> 部署前先用 <code>record_baseline</code> 記錄舊序號；部署完成後，用 <code>check_cert</code> 確認服務送出的是本次產生的憑證。</p>
 <p><strong>Liberty VM IP 從學員電腦的 SSH config 查詢</strong>（用前面的 <code>ssh -G liberty1</code>，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 <code>TLS_HOST</code>，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 <code>127.0.0.1</code> IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。</p>
 <p><strong>給 Bob 的部署要求：</strong></p>
-<pre><code class="language-text">請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。</code></pre>
-<p>以下函式在目前 Terminal 定義一次；<code>record_baseline</code> 在步驟 1 使用，<code>check_cert</code> 在部署完成後使用。將 CA 與本次 leaf 路徑換成實際輸出位置後，才執行 <code>check_cert</code>。這些變數只供驗證使用。</p>
+<pre><code class="language-text">本環境 Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）；第一次部署必須把它換成本次新憑證（不能因為已有憑證就 skip），之後的輪換才做到期判斷；替換前先備份舊 key.p12。若需要修改 server.xml 也要先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本內一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）；公開憑證檔權限 0644（vpcuser 要能讀來驗證），私鑰 0600。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。</code></pre>
+<p>以下函式在目前 Terminal 定義一次；<code>record_baseline</code> 在步驟 1 使用，<code>check_cert</code> 在部署完成後使用。確認 CA 與本次 leaf 的檔名與實際輸出一致後，才執行 <code>check_cert</code>。這些變數只供驗證使用。</p>
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
 <pre><code class="language-bash">set -o pipefail
 TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
 TLS_PORT=9443 # 以實際設定為準
-CA_FILE=&#x27;/實際路徑/ca.crt&#x27;
-LEAF_FILE=&#x27;/實際路徑/server.crt&#x27;
+CA_FILE=&#x27;/home/vpcuser/clm-workshop/ca.crt&#x27; # Bob 產出後確認實際檔名
+LEAF_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # 同上
 
 record_baseline() (
   set -o pipefail
@@ -51,7 +51,7 @@ record_baseline() (
     cat before.txt
   else
     rm -f before.tmp before.txt
-    echo &#x27;尚未取得線上憑證，確認設定後走首次部署流程。&#x27;
+    echo &#x27;無法取得線上憑證：請確認 Liberty 已啟動、TLS_HOST 與 TLS_PORT 正確，並查看 baseline-tls.log。&#x27;
   fi
 )
 
@@ -93,11 +93,11 @@ record_baseline</code></pre>
 <h3>2. 建立簽發任務｜10 分鐘</h3>
 <p>用 Bob 建立測試 CA，再完成 server key、CSR、IP SAN 與簽發任務；CA 只在不存在時建立。</p>
 <p><strong>給 Bob 的提示：</strong></p>
-<pre><code class="language-text">請產生單一 playbook.yml，以 ca_cert_file、ca_key_file 變數指定自行建立的 CA 路徑，CA 不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用，使用 ansible.builtin 與已安裝 OpenSSL，為 SSH config 查到的 VM IP 及 127.0.0.1 加入 IP SAN，CN 僅作標籤，CA 與 leaf 效期由學員自行設定，CA 效期需涵蓋 leaf。CA 私鑰只留在課堂 VM。每次輪換使用新序號；失敗時停止，不忽略錯誤。</code></pre>
+<pre><code class="language-text">請產生單一 playbook.yml（需改動 Liberty 的 task 用 become: true；產出檔放 /home/vpcuser/clm-workshop/）：以 ca_cert_file、ca_key_file 變數指定自行建立的 CA 路徑，CA 不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用，使用 ansible.builtin 與已安裝 OpenSSL，為 SSH config 查到的 VM IP 及 127.0.0.1 加入 IP SAN，CN 僅作標籤，CA 與 leaf 效期由學員自行設定，CA 效期需涵蓋 leaf。CA 私鑰只留在課堂 VM。每次輪換使用新序號；失敗時停止，不忽略錯誤。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">ansible-playbook -i inventory playbook.yml --syntax-check
 # 請 Bob 補完單一 Playbook 後再執行，語法檢查不會簽發憑證</code></pre>
-<p><strong>檢查點：</strong> 可簽發且有 SAN 的憑證。</p>
+<p><strong>檢查點：</strong> 可簽發且有 SAN 的憑證，CA 與 leaf 驗證通過（<code>openssl verify -CAfile ca.crt server.crt</code>）。</p>
 <h3>3. 完成部署與恢復｜17 分鐘</h3>
 <p>補上條件判斷、備份、PKCS12、受控重啟與 block/rescue。</p>
 <p><strong>給 Bob 的提示：</strong></p>
@@ -142,6 +142,6 @@ fi
 <h2>60 分鐘內的完成標準</h2>
 <ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>一般重跑不重新簽發、不替換 keystore、不重啟服務。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
-<ul><li>Cheat sheet 參考：<a href="https://owhc.github.io/bob-cheatsheet/bob-lite-ver.html">Bob Cheat Sheet</a></li><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>進階 CA 階層建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
+<ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>進階 CA 階層建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
 <div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>基準資訊與連線確認。</td></tr><tr><td>05–15 分</td><td>建立簽發任務</td><td>可簽發且有 SAN 的憑證。</td></tr><tr><td>15–32 分</td><td>完成部署與恢復</td><td>完整單檔 Playbook。</td></tr><tr><td>32–45 分</td><td>執行與重跑</td><td>Play recap、序號變更與 skip。</td></tr><tr><td>45–55 分</td><td>檢查重複執行結果</td><td>一般重跑不換證、不重啟，線上序號不變。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄。</td></tr></table></div></main></body></html>

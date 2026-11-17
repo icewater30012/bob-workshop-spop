@@ -55,18 +55,18 @@ openssl version
 
 ### 部署前確認、部署後驗證
 
-**開始時沒有 HTTPS 或憑證也可以做。** 部署前只檢查 Liberty 設定；已提供憑證才記錄舊序號。部署完成後，才檢查服務是否送出本次產生的憑證。
+**Liberty 目前已啟用 HTTPS，送出的是預設自簽憑證（`CN=localhost`，無 IP SAN）；本課要把它換成新憑證。** 部署前先用 `record_baseline` 記錄舊序號；部署完成後，用 `check_cert` 確認服務送出的是本次產生的憑證。
 
 **Liberty VM IP 從學員電腦的 SSH config 查詢**（用前面的 `ssh -G liberty1`，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 `TLS_HOST`，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 `127.0.0.1` IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。
 
 **給 Bob 的部署要求：**
 
 ```text
-請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並用本次自簽憑證作為明確信任依據，驗證 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。
+本環境 Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）；第一次部署必須把它換成本次新憑證（不能因為已有憑證就 skip），之後的輪換才做到期判斷；替換前先備份舊 key.p12。若需要修改 server.xml 也要先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並用本次自簽憑證作為明確信任依據，驗證 IP SAN。
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本內一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）；公開憑證檔權限 0644（vpcuser 要能讀來驗證），私鑰 0600。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。
 ```
 
-以下函式在目前 Terminal 定義一次；`record_baseline` 在步驟 1 使用，`check_cert` 在部署完成後使用。將本次伺服器憑證路徑換成實際輸出位置後，才執行 `check_cert`。這些變數只供驗證使用。
+以下函式在目前 Terminal 定義一次；`record_baseline` 在步驟 1 使用，`check_cert` 在部署完成後使用。確認本次伺服器憑證的檔名與實際輸出一致後，才執行 `check_cert`。這些變數只供驗證使用。
 
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
@@ -75,7 +75,7 @@ IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1�
 set -o pipefail
 TLS_HOST='填入學員電腦SSH config查到的Liberty VM IP'
 TLS_PORT=9443 # 以實際設定為準
-CERT_FILE='/實際路徑/server.crt' # 本次產生的伺服器自簽憑證
+CERT_FILE='/home/vpcuser/clm-workshop/server.crt' # 本次產生的伺服器自簽憑證；Bob 產出後確認實際檔名
 
 record_baseline() (
   set -o pipefail
@@ -87,7 +87,7 @@ record_baseline() (
     cat before.txt
   else
     rm -f before.tmp before.txt
-    echo '尚未取得線上憑證，確認設定後走首次部署流程。'
+    echo '無法取得線上憑證：請確認 Liberty 已啟動、TLS_HOST 與 TLS_PORT 正確，並查看 baseline-tls.log。'
   fi
 )
 
@@ -114,7 +114,7 @@ check_cert() (
 
 ### 1. 辨識現況｜5 分鐘
 
-先用 Bob 釐清自簽憑證與換證流程，再檢查這台 VM 的 HTTPS／keystore 設定；有舊憑證才記錄序號。
+先用 Bob 釐清自簽憑證與換證流程，再檢查這台 VM 的 HTTPS／keystore 設定，記錄預設憑證的序號。
 
 **給 Bob 的提示：**
 
@@ -127,7 +127,7 @@ check_cert() (
 5. Shell 與 crontab 如何檢查到期並執行輪換。
 
 再根據本次環境：
-請透過 SSH 檢查本組 Liberty 的 server.xml、執行狀態與既有公開憑證，列出：
+請檢查本組 Liberty 的 server.xml、執行狀態與既有公開憑證，列出：
 - HTTPS 是否啟用、port、keystore 路徑及格式。
 - 有憑證時才列出序號、SAN 與到期日；沒有則標示首次部署。
 - 本次 server.crt、server.key、keystore.p12 的規劃路徑及服務控制方式。
@@ -200,7 +200,7 @@ chmod 700 ./cert-rotate.sh
 **給 Bob 的提示：**
 
 ```text
-請提供保留既有 crontab 的安裝方式，排程使用絕對路徑與腳本參數；用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。
+請提供保留既有 crontab 的安裝方式（以 root 的 crontab 安裝；腳本與產出一律用 /home/vpcuser/clm-workshop/ 絕對路徑），排程使用絕對路徑與腳本參數；用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。
 ```
 
 **操作指令（Liberty VM）：**
@@ -292,7 +292,6 @@ sudo crontab -l
 
 ## 延伸練習（不計入 60 分鐘）
 
-- Cheat sheet 參考：[Bob Cheat Sheet](https://owhc.github.io/bob-cheatsheet/bob-lite-ver.html)
 - 以錯誤憑證路徑測試失敗保護，確認不覆蓋線上 keystore；進一步練習部署失敗後還原。
 - AGENTS.md、Slash Command、可重用 Skill 與 Frontend Slides 簡報。
 
@@ -300,7 +299,7 @@ sudo crontab -l
 
 | 時間 | 工作 | 檢查點 |
 |---|---|---|
-| 00–05 分 | 辨識現況 | 找出憑證／keystore 路徑，有原憑證才記錄 |
+| 00–05 分 | 辨識現況 | 找出憑證／keystore 路徑，記錄預設憑證序號 |
 | 05–15 分 | 產生憑證 | 自簽簽章、IP SAN 與私鑰配對正確 |
 | 15–32 分 | 建立換證腳本 | 語法通過，具到期判斷及備份 |
 | 32–45 分 | 實測與排程 | 序號變更、重跑 skip、cron 已設定 |
