@@ -62,7 +62,7 @@ whoami
 openssl version
 ```
 
-確認該組 Vault API 位址、信任 CA、PKI mount／role 與受限 Token 檔位置。Token 只從受限本機檔案讀取。
+Vault API 位址為 `https://128.168.136.176:8200`（`export VAULT_ADDR=https://128.168.136.176:8200`）。你的 Vault Token 已放在 Liberty VM 的 `~/clm-workshop/vault-token`（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。 PKI mount 與 role 名稱、信任 CA 向講師確認。
 
 **先讓 Bob 確認實際環境：**
 
@@ -83,7 +83,7 @@ openssl version
 
 ```text
 請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。 Liberty 的 keystore 密碼若在 server.xml 以 ${keystore.password} 引用，實際值在該 server 目錄的 server.env；新 PKCS12 沿用同一密碼，只在腳本內讀取，不輸出、不寫進日誌。
 ```
 
 以下函式在目前 Terminal 定義一次；`record_baseline` 在步驟 1 使用，`check_cert` 在部署完成後使用。將 CA 與本次 leaf 路徑換成實際輸出位置後，才執行 `check_cert`。這些變數只供驗證使用。
@@ -222,8 +222,7 @@ check_cert | tee after.txt
 ./cert-rotate.sh
 # 第二次應顯示未達門檻，略過簽發與重啟
 crontab -l
-crontab -e
-# 只新增本課排程，保留其他項目
+# 請 Bob 提供不開編輯器的安裝命令（讀出現有 crontab 再附加本課排程），保留其他項目
 crontab -l
 ```
 
@@ -292,6 +291,7 @@ Token 由腳本讀取受限本機檔案，不放在 cron 指令或日誌。課�
 1. 首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。
 2. 重跑未到期時 skip；cron 已設定，精簡環境手動測試通過。
 3. 留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。
+4. 瀏覽器開啟 `https://<IP>:9443/adminCenter/`（`admin`／`admin123456`），檢視網址列憑證，序號與 `check_cert` 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。
 
 ## 延伸練習（不計入 60 分鐘）
 

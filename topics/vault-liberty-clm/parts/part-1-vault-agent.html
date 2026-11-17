@@ -22,7 +22,7 @@ hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version</code></pre>
-<p>確認該組 Vault API 位址、信任 CA、PKI mount／role，以及 AppRole Role ID／Secret ID 的本機檔案位置。Secret ID 是本路線 Agent auto-auth 使用的認證，值不要貼進對話。</p>
+<p>Vault API 位址為 <code>https://128.168.136.176:8200</code>（<code>export VAULT_ADDR=https://128.168.136.176:8200</code>）。你的 Vault Token 已放在 Liberty VM 的 <code>~/clm-workshop/vault-token</code>（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。 PKI mount 與 role 名稱、信任 CA 向講師確認。AppRole 由你在步驟 2 自行建立：用上述 Token 建立 AppRole，Role ID 與 Secret ID 各存成 0600 本機檔案；Secret ID 是 Agent auto-auth 使用的認證，值不要貼進對話。</p>
 <p><strong>先讓 Bob 確認實際環境：</strong></p>
 <pre><code class="language-text">請協助檢查 Liberty server.xml，確認是否已設定 HTTPS、port 與 keystore；若已有憑證才讀取其 SAN，並確認服務控制方式，只讀公開憑證與設定，不顯示私鑰或密碼。
 請列出本路線所需檔案與認證的位置，缺少時先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。工作目錄是現在建立的 ~/clm-workshop，Agent 用 HCL 指定實際路徑，hook 使用明確參數；請依確認結果給完整執行命令。</code></pre>
@@ -32,7 +32,7 @@ openssl version</code></pre>
 <p><strong>Liberty VM IP 從學員電腦的 SSH config 查詢</strong>（用前面的 <code>ssh -G liberty1</code>，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 <code>TLS_HOST</code>，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 <code>127.0.0.1</code> IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。</p>
 <p><strong>給 Bob 的部署要求：</strong></p>
 <pre><code class="language-text">請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。</code></pre>
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。 Liberty 的 keystore 密碼若在 server.xml 以 ${keystore.password} 引用，實際值在該 server 目錄的 server.env；新 PKCS12 沿用同一密碼，只在腳本內讀取，不輸出、不寫進日誌。</code></pre>
 <p>以下函式在目前 Terminal 定義一次；<code>record_baseline</code> 在步驟 1 使用，<code>check_cert</code> 在部署完成後使用。將 CA 與本次 leaf 路徑換成實際輸出位置後，才執行 <code>check_cert</code>。這些變數只供驗證使用。</p>
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
@@ -91,9 +91,9 @@ check_cert() (
 record_baseline</code></pre>
 <p><strong>檢查點：</strong> HTTPS 現況（有憑證才記錄）。</p>
 <h3>2. 完成 Agent 設定｜12 分鐘</h3>
-<p>確認該組 AppRole、PKI role 與認證檔位置，請 Bob 產生 auto-auth 與 template 設定。</p>
+<p>先用你的 Vault Token 建立本組 AppRole（只需有 PKI 簽發權限的 policy），取得 Role ID 並產生 Secret ID 存成 0600 檔案；再請 Bob 產生 auto-auth 與 template 設定。</p>
 <p><strong>給 Bob 的提示：</strong></p>
-<pre><code class="language-text">請產生 Agent HCL 與 template：AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。使用 pkiCert，單次簽發輸出同一份 PEM bundle，包含 leaf、私鑰與 CA 鏈。hook 只在成功渲染後執行；設定執行逾時。不要把私鑰分成獨立簽發的 template。</code></pre>
+<pre><code class="language-text">請先用 ~/clm-workshop/vault-token 建立本組 AppRole（policy 只允許該 PKI role 簽發），將 Role ID、Secret ID 各寫入 0600 檔案，不要顯示值。接著產生 Agent 設定檔 liberty-agent.hcl 與 template：AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。使用 pkiCert，單次簽發輸出同一份 PEM bundle，包含 leaf、私鑰與 CA 鏈。hook 指向 deploy-hook.sh（步驟 3 建立），只在成功渲染後執行；設定執行逾時。不要把私鑰分成獨立簽發的 template。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">vault agent -help
 # 請 Bob 產生 HCL 與 template，再檢視檔案內容
@@ -150,7 +150,7 @@ fi</code></pre>
 <p>PKI leaf 輪換是重新簽發；AppRole Token renewal 是另一件事。短 TTL 測試須確認 role、CA 剩餘效期及 Agent template 行為；若未觀察到自動輪換，記錄未完成事項。</p>
 <p><a href="https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent/template">官方 Agent template 說明</a></p>
 <h2>60 分鐘內的完成標準</h2>
-<ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>Agent 自動觸發至少一次重新簽發與部署，日誌及線上序號吻合。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li></ol>
+<ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>Agent 自動觸發至少一次重新簽發與部署，日誌及線上序號吻合。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>Cheat sheet 參考：<a href="https://owhc.github.io/bob-cheatsheet/bob-lite-ver.html">Bob Cheat Sheet</a></li><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>

@@ -63,7 +63,7 @@ openssl version
 
 ```text
 請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並用本次自簽憑證作為明確信任依據，驗證 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。 Liberty 的 keystore 密碼若在 server.xml 以 ${keystore.password} 引用，實際值在該 server 目錄的 server.env；新 PKCS12 沿用同一密碼，只在腳本內讀取，不輸出、不寫進日誌。
 ```
 
 以下函式在目前 Terminal 定義一次；`record_baseline` 在步驟 1 使用，`check_cert` 在部署完成後使用。將本次伺服器憑證路徑換成實際輸出位置後，才執行 `check_cert`。這些變數只供驗證使用。
@@ -171,7 +171,7 @@ chmod 700 ./issue-cert.sh
 **給 Bob 的提示：**
 
 ```text
-請建立 cert-rotate.sh，FORCE 預設 false：由學員設定輪換門檻（小於憑證效期）、FORCE=true 強制模式、互斥鎖（flock，避免排程與手動換證同時執行）、暫存目錄、先驗證自簽憑證及私鑰配對，再將 server.crt＋server.key 轉 PKCS12（不加 CA 鏈）、備份及原子替換（同一檔案系統內先完成新檔，再 rename 替換）、受控重啟 Liberty、線上序號確認；若部署失敗則還原並恢復服務。保留 server.xml 其他功能，首次部署時補齊 HTTPS 設定；密碼讀取受限本機檔；每個步驟明確處理失敗。
+請建立 cert-rotate.sh，FORCE 預設 false：由學員設定輪換門檻（小於憑證效期）；未達門檻就 skip，達門檻或 FORCE=true 時先呼叫 issue-cert.sh 產生新的 server.key／server.crt（序號必須改變），再部署。另需互斥鎖（flock，避免排程與手動換證同時執行）、暫存目錄、先驗證自簽憑證及私鑰配對，再將 server.crt＋server.key 轉 PKCS12（不加 CA 鏈）、備份及原子替換（同一檔案系統內先完成新檔，再 rename 替換）、受控重啟 Liberty、線上序號確認；若部署失敗則還原並恢復服務。保留 server.xml 其他功能，首次部署時補齊 HTTPS 設定；密碼讀取受限本機檔；每個步驟明確處理失敗。
 ```
 
 **操作指令（Liberty VM）：**
@@ -214,7 +214,7 @@ check_cert | tee after.txt
 ./cert-rotate.sh
 # 第二次應 skip
 crontab -l
-crontab -e
+# 請 Bob 提供不開編輯器的安裝命令（讀出現有 crontab 再附加本課排程），保留其他項目
 crontab -l
 ```
 
@@ -284,6 +284,7 @@ crontab -l
 1. Liberty HTTPS 提供本次自簽憑證，IP SAN 與憑證指紋驗證通過。
 2. 一般重跑未達門檻時 skip；cron 已設定，精簡環境手動測試通過。
 3. 留下腳本、排程、部署後憑證資訊與簡短交接；有舊憑證才附前後序號。
+4. 瀏覽器開啟 `https://<IP>:9443/adminCenter/`（`admin`／`admin123456`），檢視網址列憑證，序號與 `check_cert` 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。
 
 ## 延伸練習（不計入 60 分鐘）
 

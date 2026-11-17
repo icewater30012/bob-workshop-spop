@@ -62,7 +62,7 @@ whoami
 openssl version
 ```
 
-確認該組 Vault API 位址、信任 CA、PKI mount／role，以及 AppRole Role ID／Secret ID 的本機檔案位置。Secret ID 是本路線 Agent auto-auth 使用的認證，值不要貼進對話。
+Vault API 位址為 `https://128.168.136.176:8200`（`export VAULT_ADDR=https://128.168.136.176:8200`）。你的 Vault Token 已放在 Liberty VM 的 `~/clm-workshop/vault-token`（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。 PKI mount 與 role 名稱、信任 CA 向講師確認。AppRole 由你在步驟 2 自行建立：用上述 Token 建立 AppRole，Role ID 與 Secret ID 各存成 0600 本機檔案；Secret ID 是 Agent auto-auth 使用的認證，值不要貼進對話。
 
 **先讓 Bob 確認實際環境：**
 
@@ -83,7 +83,7 @@ openssl version
 
 ```text
 請支援首次部署與後續輪換兩種情況：沒有 keystore 或未設定 HTTPS 時，建立 PKCS12、補齊 Liberty 必要的 HTTPS／keyStore 設定；已有憑證才做到期判斷與舊檔備份。不要對不存在的憑證做日期判斷，首次部署也不能 skip。修改 server.xml 前先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
+IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。 Liberty 的 keystore 密碼若在 server.xml 以 ${keystore.password} 引用，實際值在該 server 目錄的 server.env；新 PKCS12 沿用同一密碼，只在腳本內讀取，不輸出、不寫進日誌。
 ```
 
 以下函式在目前 Terminal 定義一次；`record_baseline` 在步驟 1 使用，`check_cert` 在部署完成後使用。將 CA 與本次 leaf 路徑換成實際輸出位置後，才執行 `check_cert`。這些變數只供驗證使用。
@@ -166,12 +166,12 @@ record_baseline
 
 ### 2. 完成 Agent 設定｜12 分鐘
 
-確認該組 AppRole、PKI role 與認證檔位置，請 Bob 產生 auto-auth 與 template 設定。
+先用你的 Vault Token 建立本組 AppRole（只需有 PKI 簽發權限的 policy），取得 Role ID 並產生 Secret ID 存成 0600 檔案；再請 Bob 產生 auto-auth 與 template 設定。
 
 **給 Bob 的提示：**
 
 ```text
-請產生 Agent HCL 與 template：AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。使用 pkiCert，單次簽發輸出同一份 PEM bundle，包含 leaf、私鑰與 CA 鏈。hook 只在成功渲染後執行；設定執行逾時。不要把私鑰分成獨立簽發的 template。
+請先用 ~/clm-workshop/vault-token 建立本組 AppRole（policy 只允許該 PKI role 簽發），將 Role ID、Secret ID 各寫入 0600 檔案，不要顯示值。接著產生 Agent 設定檔 liberty-agent.hcl 與 template：AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。使用 pkiCert，單次簽發輸出同一份 PEM bundle，包含 leaf、私鑰與 CA 鏈。hook 指向 deploy-hook.sh（步驟 3 建立），只在成功渲染後執行；設定執行逾時。不要把私鑰分成獨立簽發的 template。
 ```
 
 **操作指令（Liberty VM）：**
@@ -286,6 +286,7 @@ PKI leaf 輪換是重新簽發；AppRole Token renewal 是另一件事。短 TTL
 1. 首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。
 2. Agent 自動觸發至少一次重新簽發與部署，日誌及線上序號吻合。
 3. 留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。
+4. 瀏覽器開啟 `https://<IP>:9443/adminCenter/`（`admin`／`admin123456`），檢視網址列憑證，序號與 `check_cert` 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。
 
 ## 延伸練習（不計入 60 分鐘）
 
