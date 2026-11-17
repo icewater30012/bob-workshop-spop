@@ -24,11 +24,34 @@ openssl version</code></pre>
 <p>本 Part 直接產生 <strong>伺服器自簽憑證</strong>，由伺服器自己的私鑰簽署，不另外建立 CA 或 CA 憑證。憑證效期與輪換門檻自行決定，門檻需小於效期。</p>
 <h3>部署前確認、部署後驗證</h3>
 <p><strong>Liberty 目前已啟用 HTTPS，送出的是預設自簽憑證（<code>CN=localhost</code>，無 IP SAN）；本課要把它換成新憑證。</strong> 部署前先用 <code>record_baseline</code> 記錄舊序號；部署完成後，用 <code>check_cert</code> 確認服務送出的是本次產生的憑證。</p>
-<p><strong>Liberty VM IP 從學員電腦的 SSH config 查詢</strong>（用前面的 <code>ssh -G liberty1</code>，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 <code>TLS_HOST</code>，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 <code>127.0.0.1</code> IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。</p>
+<p><strong>Liberty VM IP 的取得與使用：</strong></p>
+<ul><li>在學員電腦用前面的 <code>ssh -G liberty1</code> 查詢（其他組換自己的編號）。</li><li>把輸出的 IP 用於憑證 IP SAN 與驗證用的 <code>TLS_HOST</code>；另加入 <code>127.0.0.1</code> IP SAN 供本機測試。</li><li>不要把 SSH 別名當 IP；VM 內也不要假設有相同的 SSH config。</li><li>不需要 DNS 名稱或 DNS challenge。</li></ul>
 <p><strong>給 Bob 的部署要求：</strong></p>
-<pre><code class="language-text">本環境 Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）；第一次部署必須把它換成本次新憑證（不能因為已有憑證就 skip），之後的輪換才做到期判斷；替換前先備份舊 key.p12。若需要修改 server.xml 也要先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並用本次自簽憑證作為明確信任依據，驗證 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本內一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）；公開憑證檔權限 0644（vpcuser 要能讀來驗證），私鑰 0600。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。</code></pre>
-<p>以下函式在目前 Terminal 定義一次；<code>record_baseline</code> 在步驟 1 使用，<code>check_cert</code> 在部署完成後使用。確認本次伺服器憑證的檔名與實際輸出一致後，才執行 <code>check_cert</code>。這些變數只供驗證使用。</p>
+<pre><code class="language-text">請依以下條件建立部署流程：
+
+【現況】
+- Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）。
+- 第一次部署就必須換成本次新憑證，不能因為已有憑證而 skip；之後的輪換才做到期判斷。
+
+【憑證】
+- IP SAN 包含 SSH config 查到的 Liberty VM IP 與 127.0.0.1。
+- 不使用 DNS challenge，不要求真實 DNS 名稱。
+
+【路徑與權限】
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
+- 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
+
+【Liberty 與 keystore】
+- Liberty 以 root 執行；server.xml、server.env、resources/security/key.p12 都是 root 所有。
+- vpcuser 可免密碼 sudo；讀寫與重啟 Liberty 都用 sudo（cron 內也要）。
+- key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）。新 PKCS12 沿用同一密碼並放回原路徑；只在腳本內讀取，不輸出、不寫進日誌。
+- 替換前先備份舊 key.p12；若要改 server.xml 也先備份，保留其他功能與連接埠設定。
+
+【驗證】
+- 啟動後比對線上與本次產出的 leaf 憑證指紋，並以本次自簽憑證作為明確信任依據驗證 IP SAN。</code></pre>
+<p><strong>驗證函式使用方式：</strong></p>
+<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認本次伺服器憑證的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
 <pre><code class="language-bash">set -o pipefail
@@ -64,7 +87,7 @@ check_cert() (
   echo &#x27;驗證通過：TLS、明確信任的自簽憑證、IP SAN 與本次憑證指紋一致&#x27;
 )</code></pre>
 </details>
-<p><code>record_baseline</code> 無法取得憑證時，先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。<code>check_cert</code> 失敗則查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</p>
+<ul><li><code>record_baseline</code> 無法取得憑證：先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。</li><li><code>check_cert</code> 失敗：查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</li></ul>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
 <p>先用 Bob 釐清自簽憑證與換證流程，再檢查這台 VM 的 HTTPS／keystore 設定，記錄預設憑證的序號。</p>
@@ -89,7 +112,12 @@ record_baseline</code></pre>
 <h3>2. 產生伺服器憑證｜10 分鐘</h3>
 <p>讓 Bob 直接產生私鑰與帶 IP SAN 的伺服器自簽憑證；效期自行選擇，驗證自簽簽章與私鑰配對。</p>
 <p><strong>給 Bob 的提示：</strong></p>
-<pre><code class="language-text">請產生 issue-cert.sh，直接用 OpenSSL req -x509 建立 server.key 與伺服器自簽 server.crt，不另外建立 CA、不產生 ca.crt 或 ca.key，也不需要 CSR 送簽流程。設定 basicConstraints=critical,CA:FALSE、適合 TLS server 的 keyUsage 及 extendedKeyUsage=serverAuth。CN 僅作標籤，IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。效期、IP、輸出路徑用參數傳入，每次產生新憑證使用新序號。使用 umask 077；檢查自簽簽章、IP SAN 與私鑰配對，不顯示私鑰。</code></pre>
+<pre><code class="language-text">請產生 issue-cert.sh，需求如下：
+- 方式：直接用 openssl req -x509 建立 server.key 與伺服器自簽 server.crt；不建立 CA，不產生 ca.crt／ca.key，也不需要 CSR 送簽流程。
+- 憑證屬性：basicConstraints=critical,CA:FALSE、適合 TLS server 的 keyUsage、extendedKeyUsage=serverAuth。
+- 名稱：CN 僅作標籤；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
+- 參數：效期、IP、輸出路徑用參數傳入；每次產生新憑證都使用新序號。
+- 安全：使用 umask 077；檢查自簽簽章、IP SAN 與私鑰配對，不顯示私鑰。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">bash -n ./issue-cert.sh
 chmod 700 ./issue-cert.sh
@@ -99,7 +127,13 @@ chmod 700 ./issue-cert.sh
 <h3>3. 建立換證腳本｜17 分鐘</h3>
 <p>整合到期判斷、PKCS12 轉換、備份與部署，避免只有單次產生憑證就結束。</p>
 <p><strong>給 Bob 的提示：</strong></p>
-<pre><code class="language-text">請建立 cert-rotate.sh，FORCE 預設 false：由學員設定輪換門檻（小於憑證效期）；未達門檻就 skip，達門檻或 FORCE=true 時先呼叫 issue-cert.sh 產生新的 server.key／server.crt（序號必須改變），再部署。另需互斥鎖（flock，避免排程與手動換證同時執行）、暫存目錄、先驗證自簽憑證及私鑰配對，再將 server.crt＋server.key 轉 PKCS12（不加 CA 鏈）、備份及原子替換（同一檔案系統內先完成新檔，再 rename 替換）、受控重啟 Liberty、線上序號確認；若部署失敗則還原並恢復服務。保留 server.xml 其他功能，首次部署時補齊 HTTPS 設定；密碼讀取受限本機檔；每個步驟明確處理失敗。</code></pre>
+<pre><code class="language-text">請建立 cert-rotate.sh，需求如下：
+- 模式：FORCE 預設 false；輪換門檻由我設定（小於憑證效期）。未達門檻就 skip；達門檻或 FORCE=true 時，先呼叫 issue-cert.sh 產生新的 server.key／server.crt（序號必須改變），再部署。
+- 互斥：用 flock，避免排程與手動換證同時執行。
+- 部署：在暫存目錄先驗證自簽憑證及私鑰配對，再將 server.crt＋server.key 轉 PKCS12（不加 CA 鏈）；備份後原子替換（同一檔案系統內先完成新檔，再 rename）。
+- 重啟與驗證：受控重啟 Liberty，確認線上序號；部署失敗就還原並恢復服務。
+- 設定：保留 server.xml 其他功能，必要時補齊 HTTPS 設定；密碼讀取受限本機檔。
+- 錯誤：每個步驟明確處理失敗。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">bash -n ./cert-rotate.sh
 chmod 700 ./cert-rotate.sh</code></pre>
@@ -110,7 +144,10 @@ chmod 700 ./cert-rotate.sh</code></pre>
 <h3>4. 實測與排程｜13 分鐘</h3>
 <p>首次沒有 keystore 時，一般執行就應部署；已有憑證時才用強制模式測試一次輪換。完成後一般重跑應 skip，並加入每日 02:00 排程。</p>
 <p><strong>給 Bob 的提示：</strong></p>
-<pre><code class="language-text">請提供保留既有 crontab 的安裝方式（以 root 的 crontab 安裝；腳本與產出一律用 /home/vpcuser/clm-workshop/ 絕對路徑），排程使用絕對路徑與腳本參數；用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。</code></pre>
+<pre><code class="language-text">請產生 cron 排程（每日 02:00）：
+- 以 root 的 crontab 安裝，保留現有項目。
+- 腳本與產出一律用 /home/vpcuser/clm-workshop/ 絕對路徑，並帶明確的腳本參數。
+- 用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash"># 首次部署：沒有 keystore 就直接建立，不需 FORCE
 ./cert-rotate.sh
@@ -129,7 +166,10 @@ exit   # 回到 vpcuser</code></pre>
 <h3>5. 驗證排程執行環境｜10 分鐘</h3>
 <p>確認腳本在 cron 的精簡環境下仍可執行，檢查日誌與 skip 結果。</p>
 <p><strong>給 Bob 的提示：</strong></p>
-<pre><code class="language-text">請檢查 cert-rotate.sh 是否依賴互動 Terminal 的環境變數。改用明確腳本參數及絕對路徑，不要假設存在 env.sh。提供 env -i 的手動測試命令，保留必要 HOME、PATH 與實際參數；不使用 FORCE，預期未到期就 skip。檢查退出碼與日誌，不應重新簽發或重啟 Liberty。</code></pre>
+<pre><code class="language-text">請檢查 cert-rotate.sh 能否在 cron 的精簡環境執行：
+- 確認它不依賴互動 Terminal 的環境變數；改用明確腳本參數與絕對路徑，不要假設存在 env.sh。
+- 提供 env -i 的手動測試命令，保留必要的 HOME、PATH 與實際參數；不使用 FORCE。
+- 預期結果：未到期就 skip；檢查退出碼與日誌，不應重新簽發或重啟 Liberty。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash"># 先請 Bob 依實際腳本參數補齊測試命令，再執行
 # 以下適用腳本已具備明確參數或已確認的非機密預設值

@@ -56,8 +56,12 @@ openssl version
 **先讓 Bob 確認實際環境：**
 
 ```text
-請協助檢查 Liberty server.xml，確認是否已設定 HTTPS、port 與 keystore；若已有憑證才讀取其 SAN，並確認服務控制方式，只讀公開憑證與設定，不顯示私鑰或密碼。
-請列出本路線所需檔案與認證的位置，缺少時先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。工作目錄是現在建立的 ~/clm-workshop，Ansible 用明確變數指定實際路徑；請依確認結果給完整執行命令。
+請先確認實際環境，只讀公開憑證與設定，不顯示私鑰或密碼：
+1. 檢查 Liberty server.xml：HTTPS、port、keystore 設定，以及服務控制方式。
+2. 讀取目前憑證的 SAN。
+3. 列出本路線所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
+
+工作目錄是 ~/clm-workshop；Ansible 用明確變數指定實際路徑。請依確認結果給完整執行命令。
 ```
 
 測試 CA 由學員在步驟 2 建立，效期與輪換門檻自行決定；不需講師提供 CA。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。
@@ -66,16 +70,47 @@ openssl version
 
 **Liberty 目前已啟用 HTTPS，送出的是預設自簽憑證（`CN=localhost`，無 IP SAN）；本課要把它換成新憑證。** 部署前先用 `record_baseline` 記錄舊序號；部署完成後，用 `check_cert` 確認服務送出的是本次產生的憑證。
 
-**Liberty VM IP 從學員電腦的 SSH config 查詢**（用前面的 `ssh -G liberty1`，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 `TLS_HOST`，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 `127.0.0.1` IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。
+**Liberty VM IP 的取得與使用：**
+
+- 在學員電腦用前面的 `ssh -G liberty1` 查詢（其他組換自己的編號）。
+- 把輸出的 IP 用於憑證 IP SAN 與驗證用的 `TLS_HOST`；另加入 `127.0.0.1` IP SAN 供本機測試。
+- 不要把 SSH 別名當 IP；VM 內也不要假設有相同的 SSH config。
+- 不需要 DNS 名稱或 DNS challenge。
 
 **給 Bob 的部署要求：**
 
 ```text
-本環境 Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）；第一次部署必須把它換成本次新憑證（不能因為已有憑證就 skip），之後的輪換才做到期判斷；替換前先備份舊 key.p12。若需要修改 server.xml 也要先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本內一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）；公開憑證檔權限 0644（vpcuser 要能讀來驗證），私鑰 0600。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。
+請依以下條件建立部署流程：
+
+【現況】
+- Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）。
+- 第一次部署就必須換成本次新憑證，不能因為已有憑證而 skip；之後的輪換才做到期判斷。
+
+【憑證】
+- IP SAN 包含 SSH config 查到的 Liberty VM IP 與 127.0.0.1。
+- 不使用 DNS challenge，不要求真實 DNS 名稱。
+
+【路徑與權限】
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
+- 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
+
+【Liberty 與 keystore】
+- Liberty 以 root 執行；server.xml、server.env、resources/security/key.p12 都是 root 所有。
+- vpcuser 可免密碼 sudo；讀寫與重啟 Liberty 都用 sudo（cron 內也要）。
+- key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）。新 PKCS12 沿用同一密碼並放回原路徑；只在腳本內讀取，不輸出、不寫進日誌。
+- 替換前先備份舊 key.p12；若要改 server.xml 也先備份，保留其他功能與連接埠設定。
+
+【驗證】
+- 啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
 ```
 
-以下函式在目前 Terminal 定義一次；`record_baseline` 在步驟 1 使用，`check_cert` 在部署完成後使用。確認 CA 與本次 leaf 的檔名與實際輸出一致後，才執行 `check_cert`。這些變數只供驗證使用。
+**驗證函式使用方式：**
+
+- 在 Liberty VM 的 Terminal 定義一次。
+- `record_baseline` 在步驟 1 使用；`check_cert` 在部署完成後使用。
+- 執行 `check_cert` 前，先確認CA 與本次 leaf的檔名與實際輸出一致。
+- 這些變數只供驗證使用。
 
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
@@ -118,7 +153,8 @@ check_cert() (
 
 </details>
 
-`record_baseline` 無法取得憑證時，先看設定與 `baseline-tls.log`，不直接認定憑證過期或信任有誤。`check_cert` 失敗則查看 `tls-check.log`；不能用忽略驗證的方式當作完成。
+- `record_baseline` 無法取得憑證：先看設定與 `baseline-tls.log`，不直接認定憑證過期或信任有誤。
+- `check_cert` 失敗：查看 `tls-check.log`；不能用忽略驗證的方式當作完成。
 
 ## 實作流程
 
@@ -159,7 +195,12 @@ record_baseline
 **給 Bob 的提示：**
 
 ```text
-請產生單一 playbook.yml（需改動 Liberty 的 task 用 become: true；產出檔放 /home/vpcuser/clm-workshop/）：以 ca_cert_file、ca_key_file 變數指定自行建立的 CA 路徑，CA 不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用，使用 ansible.builtin 與已安裝 OpenSSL，為 SSH config 查到的 VM IP 及 127.0.0.1 加入 IP SAN，CN 僅作標籤，CA 與 leaf 效期由學員自行設定，CA 效期需涵蓋 leaf。CA 私鑰只留在課堂 VM。每次輪換使用新序號；失敗時停止，不忽略錯誤。
+請產生單一 playbook.yml，需求如下：
+- 工具：用 ansible.builtin 與已安裝的 OpenSSL；改動 Liberty 的 task 要加 become: true；產出檔放 /home/vpcuser/clm-workshop/。
+- CA：路徑由 ca_cert_file、ca_key_file 變數指定；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。
+- 伺服器憑證：IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1；CN 僅作標籤；每次輪換使用新序號。
+- 效期：CA 與 leaf 效期自行設定，CA 效期需涵蓋 leaf。
+- 錯誤：失敗時停止，不忽略錯誤。
 ```
 
 **操作指令（Liberty VM）：**
@@ -178,7 +219,12 @@ ansible-playbook -i inventory playbook.yml --syntax-check
 **給 Bob 的提示：**
 
 ```text
-請補上 force_rotate 變數及學員自行設定的輪換門檻（小於憑證效期），正常未到期則略過。先在 staging 驗證 key 配對與鏈、轉 PKCS12，再備份並原子替換。以 block/rescue 包住替換、重啟及線上驗證；失敗還原並恢復服務。若使用 handler，需在驗證前 flush_handlers，不能等 play 結束才重啟。不要把秘密寫進 YAML 或 log。
+請補完 playbook.yml：
+- 條件：加入 force_rotate 變數（預設 false）與輪換門檻（自行設定，小於憑證效期）；未到期就略過。
+- 部署：先在 staging 驗證 key 配對與鏈、轉 PKCS12，再備份並原子替換。
+- 錯誤處理：用 block/rescue 包住替換、重啟與線上驗證；失敗就還原並恢復服務。
+- handler：若使用 handler，需在驗證前 flush_handlers，不能等 play 結束才重啟。
+- 機密：不要把秘密寫進 YAML 或 log。
 ```
 
 **操作指令（Liberty VM）：**
@@ -197,7 +243,11 @@ ansible-playbook -i inventory playbook.yml --syntax-check
 **給 Bob 的提示：**
 
 ```text
-請提供 syntax-check、force_rotate=true 與一般模式執行命令，解釋為何不能只憑 --check 判定憑證簽發與服務重啟成功。
+請提供以下命令，並簡述用途：
+- syntax-check
+- force_rotate=true 的執行
+- 一般模式的執行
+另外解釋：為何不能只憑 --check 判定憑證簽發與服務重啟成功。
 ```
 
 **操作指令（Liberty VM）：**
@@ -218,7 +268,10 @@ ansible-playbook -i inventory playbook.yml
 **給 Bob 的提示：**
 
 ```text
-請比較兩次執行的 tasks 與 changed／skipped 結果，確認 force_rotate 預設為 false。未到期時不重新簽發、不替換 keystore、不觸發重啟。若有不必要的 changed，請給最小修正，再重跑確認線上序號不變。
+請比較兩次執行的 tasks 與 changed／skipped 結果：
+- 確認 force_rotate 預設為 false。
+- 未到期時不應重新簽發、不替換 keystore、不觸發重啟。
+- 若有不必要的 changed，請給最小修正，再重跑確認線上序號不變。
 ```
 
 **操作指令（Liberty VM）：**

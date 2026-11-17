@@ -62,13 +62,29 @@ whoami
 openssl version
 ```
 
-Vault API 位址為 `https://128.168.136.176:8200`（`export VAULT_ADDR=https://128.168.136.176:8200`）；Vault 使用自簽憑證，已將其 CA 放在 `/home/vpcuser/clm-workshop/vault-api-ca.pem`，並設好 `VAULT_CACERT`（重新登入後生效，或 `source ~/.bashrc`）。你的 Vault Token 已放在 Liberty VM 的 `/home/vpcuser/clm-workshop/vault-token`（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話。PKI 已備妥：secrets engine mount 為 `pki_int`（Workshop Intermediate CA，Root 為 Workshop Root CA），簽發 role 為 `liberty-server`（允許 IP SAN、不需 CN、預設 TTL 1 小時、上限 168 小時，申請時可用 `ttl` 指定較短值，例如 3 分鐘）；簽發 policy 名稱為 `pki-issue`。驗證用的 CA 鏈（Root＋Intermediate）在 `/home/vpcuser/clm-workshop/pki-ca-chain.pem`，即 `check_cert` 的 `CA_FILE`。AppRole 由你在步驟 2 自行建立：用上述 Token 建立 AppRole（policy 用 `pki-issue`），Role ID 與 Secret ID 各存成 0600 本機檔案；Secret ID 是 Agent auto-auth 使用的認證，值不要貼進對話。
+以下資料已為你備妥：
+
+| 項目 | 內容 |
+|---|---|
+| Vault 位址 | `https://128.168.136.176:8200`（`export VAULT_ADDR=https://128.168.136.176:8200`） |
+| Vault 的 CA | `/home/vpcuser/clm-workshop/vault-api-ca.pem`（Vault 使用自簽憑證）；`VAULT_CACERT` 已寫入 `~/.bashrc`，重新登入或 `source ~/.bashrc` 後生效 |
+| Vault Token | `/home/vpcuser/clm-workshop/vault-token`（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話 |
+| PKI mount | `pki_int`（Workshop Intermediate CA；Root 為 Workshop Root CA） |
+| 簽發 role | `liberty-server`：允許 IP SAN、不需 CN；預設 TTL 1 小時、上限 168 小時，申請時可用 `ttl` 指定較短值（例如 3 分鐘） |
+| 簽發 policy | `pki-issue` |
+| 驗證用 CA 鏈 | `/home/vpcuser/clm-workshop/pki-ca-chain.pem`（Root＋Intermediate），即 `check_cert` 的 `CA_FILE` |
+
+AppRole 由你在步驟 2 自行建立（policy 用 `pki-issue`）：Role ID 與 Secret ID 各存成 0600 本機檔案，Secret ID 是 Agent auto-auth 使用的認證，值不要貼進對話。
 
 **先讓 Bob 確認實際環境：**
 
 ```text
-請協助檢查 Liberty server.xml，確認是否已設定 HTTPS、port 與 keystore；若已有憑證才讀取其 SAN，並確認服務控制方式，只讀公開憑證與設定，不顯示私鑰或密碼。
-請列出本路線所需檔案與認證的位置，缺少時先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。工作目錄是現在建立的 ~/clm-workshop，Agent 用 HCL 指定實際路徑，hook 使用明確參數；請依確認結果給完整執行命令。
+請先確認實際環境，只讀公開憑證與設定，不顯示私鑰或密碼：
+1. 檢查 Liberty server.xml：HTTPS、port、keystore 設定，以及服務控制方式。
+2. 讀取目前憑證的 SAN。
+3. 列出本路線所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
+
+工作目錄是 ~/clm-workshop；Agent 用 HCL 指定實際路徑，hook 使用明確參數。請依確認結果給完整執行命令。
 ```
 
 缺少 CA、role 或認證資料時，先向講師確認。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。
@@ -77,16 +93,47 @@ Vault API 位址為 `https://128.168.136.176:8200`（`export VAULT_ADDR=https://
 
 **Liberty 目前已啟用 HTTPS，送出的是預設自簽憑證（`CN=localhost`，無 IP SAN）；本課要把它換成新憑證。** 部署前先用 `record_baseline` 記錄舊序號；部署完成後，用 `check_cert` 確認服務送出的是本次產生的憑證。
 
-**Liberty VM IP 從學員電腦的 SSH config 查詢**（用前面的 `ssh -G liberty1`，其他組換自己的編號）。把輸出的實際 IP 用於憑證 IP SAN 與驗證的 `TLS_HOST`，不要把 SSH 別名當 IP，也不要在 VM 內假設有相同 SSH config。以下驗證函式在 Liberty VM 執行；另加入 `127.0.0.1` IP SAN，可供本機測試使用。不需要 DNS 名稱或 DNS challenge。
+**Liberty VM IP 的取得與使用：**
+
+- 在學員電腦用前面的 `ssh -G liberty1` 查詢（其他組換自己的編號）。
+- 把輸出的 IP 用於憑證 IP SAN 與驗證用的 `TLS_HOST`；另加入 `127.0.0.1` IP SAN 供本機測試。
+- 不要把 SSH 別名當 IP；VM 內也不要假設有相同的 SSH config。
+- 不需要 DNS 名稱或 DNS challenge。
 
 **給 Bob 的部署要求：**
 
 ```text
-本環境 Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）；第一次部署必須把它換成本次新憑證（不能因為已有憑證就 skip），之後的輪換才做到期判斷；替換前先備份舊 key.p12。若需要修改 server.xml 也要先備份，保留原有其他功能與連接埠設定。啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
-IP SAN 必須包含從 SSH config 查到的 Liberty VM IP，另加入 127.0.0.1，不使用 DNS challenge，不要求真實 DNS 名稱。所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本內一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）；公開憑證檔權限 0644（vpcuser 要能讀來驗證），私鑰 0600。 本環境 Liberty 以 root 執行，server.xml、server.env 與 resources/security/key.p12 都是 root 所有；登入帳號 vpcuser 可免密碼 sudo，讀寫與重啟 Liberty 都要用 sudo（cron 內也要）。既有 key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）；新 PKCS12 沿用同一密碼並放回原路徑，只在腳本內讀取，不輸出、不寫進日誌。
+請依以下條件建立部署流程：
+
+【現況】
+- Liberty 已啟用 HTTPS，現有 resources/security/key.p12 是預設自簽憑證（CN=localhost）。
+- 第一次部署就必須換成本次新憑證，不能因為已有憑證而 skip；之後的輪換才做到期判斷。
+
+【憑證】
+- IP SAN 包含 SSH config 查到的 Liberty VM IP 與 127.0.0.1。
+- 不使用 DNS challenge，不要求真實 DNS 名稱。
+
+【路徑與權限】
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
+- 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
+
+【Liberty 與 keystore】
+- Liberty 以 root 執行；server.xml、server.env、resources/security/key.p12 都是 root 所有。
+- vpcuser 可免密碼 sudo；讀寫與重啟 Liberty 都用 sudo（cron 內也要）。
+- key.p12 的密碼在 server.env 的 keystore_password（server.xml 以 ${keystore.password} 引用）。新 PKCS12 沿用同一密碼並放回原路徑；只在腳本內讀取，不輸出、不寫進日誌。
+- 替換前先備份舊 key.p12；若要改 server.xml 也先備份，保留其他功能與連接埠設定。
+
+【驗證】
+- 啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。
 ```
 
-以下函式在目前 Terminal 定義一次；`record_baseline` 在步驟 1 使用，`check_cert` 在部署完成後使用。確認 CA 與本次 leaf 的檔名與實際輸出一致後，才執行 `check_cert`。這些變數只供驗證使用。
+**驗證函式使用方式：**
+
+- 在 Liberty VM 的 Terminal 定義一次。
+- `record_baseline` 在步驟 1 使用；`check_cert` 在部署完成後使用。
+- 執行 `check_cert` 前，先確認CA 與本次 leaf的檔名與實際輸出一致。
+- 這些變數只供驗證使用。
 
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
@@ -129,7 +176,8 @@ check_cert() (
 
 </details>
 
-`record_baseline` 無法取得憑證時，先看設定與 `baseline-tls.log`，不直接認定憑證過期或信任有誤。`check_cert` 失敗則查看 `tls-check.log`；不能用忽略驗證的方式當作完成。
+- `record_baseline` 無法取得憑證：先看設定與 `baseline-tls.log`，不直接認定憑證過期或信任有誤。
+- `check_cert` 失敗：查看 `tls-check.log`；不能用忽略驗證的方式當作完成。
 
 ### Vault 簽發設定
 
@@ -171,8 +219,16 @@ record_baseline
 **給 Bob 的提示：**
 
 ```text
-【2a】請用 /home/vpcuser/clm-workshop/vault-token 建立本組 AppRole（policy 用 pki-issue（只允許 pki_int/issue/liberty-server 簽發）），將 Role ID、Secret ID 各寫入 /home/vpcuser/clm-workshop/ 下的 0600 檔案，不要顯示值。
-【2b】接著產生 Agent 設定檔 liberty-agent.hcl 與 template（路徑一律用 /home/vpcuser/clm-workshop/ 絕對路徑）：AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。使用 pkiCert，單次簽發輸出同一份 PEM bundle，包含 leaf、私鑰與 CA 鏈。hook 指向 deploy-hook.sh（步驟 3 建立），只在成功渲染後執行；設定執行逾時。不要把私鑰分成獨立簽發的 template。
+【2a 建立 AppRole】
+- 用 /home/vpcuser/clm-workshop/vault-token 建立本組 AppRole。
+- policy 用 pki-issue（只允許 pki_int/issue/liberty-server 簽發）。
+- Role ID、Secret ID 各寫入 /home/vpcuser/clm-workshop/ 下的 0600 檔案，不要顯示值。
+
+【2b 產生 Agent 設定】
+- 產生 liberty-agent.hcl 與 template，路徑一律用 /home/vpcuser/clm-workshop/ 絕對路徑。
+- auto-auth 的 AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。
+- 使用 pkiCert，單次簽發輸出同一份 PEM bundle（leaf、私鑰、CA 鏈）；不要把私鑰分成獨立簽發的 template。
+- hook 指向 deploy-hook.sh（步驟 3 建立），只在成功渲染後執行；設定執行逾時。
 ```
 
 **操作指令（Liberty VM）：**
@@ -192,7 +248,14 @@ vault agent -help
 **給 Bob 的提示：**
 
 ```text
-請產生 deploy-hook.sh：Agent 以 vpcuser 執行，hook 內讀寫 Liberty 檔案與重啟都要用 sudo。使用互斥鎖，從單一 bundle 拆出配對的 key／cert／chain，驗證私鑰與憑證公鑰一致及憑證鏈；在暫存目錄轉成 PKCS12，再備份並原子替換 live keystore。明確處理每一步失敗；只有變更時受控重啟 Liberty。驗證失敗還原舊 keystore 並恢復服務，不輸出秘密。
+請產生 deploy-hook.sh，需求如下：
+- Agent 以 vpcuser 執行；hook 內讀寫 Liberty 檔案與重啟 Liberty 都要用 sudo。
+- 使用互斥鎖。
+- 從單一 bundle 拆出配對的 key／cert／chain，驗證私鑰與憑證公鑰一致及憑證鏈。
+- 在暫存目錄轉成 PKCS12，再備份並原子替換 live keystore。
+- 明確處理每一步失敗；只有內容變更時才受控重啟 Liberty。
+- 驗證失敗就還原舊 keystore 並恢復服務。
+- 不輸出秘密。
 ```
 
 **操作指令（Liberty VM）：**
@@ -212,7 +275,10 @@ chmod 700 ./deploy-hook.sh
 **給 Bob 的提示：**
 
 ```text
-請檢查 Agent log、template 與 hook 執行紀錄，解釋重新簽發與 Token renewal 的不同。確認線上序號跟 bundle 的 leaf 相同；不要以 Agent 程序存活作為換證成功依據。
+請檢查 Agent log、template 與 hook 執行紀錄，並：
+- 解釋「重新簽發憑證」與「Token renewal」的不同。
+- 確認線上序號與 bundle 的 leaf 相同。
+- 不要以 Agent 程序存活作為換證成功的依據。
 ```
 
 **操作指令（Liberty VM）：**
@@ -234,7 +300,10 @@ vault agent -config=./liberty-agent.hcl 2>&1 | tee logs/agent.log
 **給 Bob 的提示：**
 
 ```text
-請協助比對 Agent／hook 日誌、bundle 憑證序號與線上序號，整理簽發、部署、驗證三個時間點。說明 AppRole Token renewal 與憑證重新簽發的差異；若未觀察到輪換，列出待確認項目，不要把程序存活視為成功。
+請比對 Agent／hook 日誌、bundle 憑證序號與線上序號：
+- 整理簽發、部署、驗證三個時間點。
+- 說明 AppRole Token renewal 與憑證重新簽發的差異。
+- 若未觀察到輪換，列出待確認項目；不要把程序存活視為成功。
 ```
 
 **操作指令（Liberty VM）：**
