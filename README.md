@@ -4,14 +4,6 @@
 
 [開啟分頁式教材 →](topics/vault-liberty-clm/index.html)
 
-## 前情提要
-
-**2026/3/15 起，新簽發的公開信任 TLS 憑證最長效期已從 398 天縮短為 200 天**；2027/3/15 降至 100 天，2029/3/15 降至 47 天。
-
-管理 100 張憑證，從 398 天縮為 47 天後，估計年續期量由約 **92 次增至 777 次**。本課用 Bob 協助自動換證，減少漏換、部署錯誤與服務中斷。
-
-來源：[CA/Browser Forum §6.3.2](https://cabforum.org/working-groups/server/baseline-requirements/requirements/)。次數按到期續期估算；私有 PKI 不受上述效期上限限制。
-
 ## Workshop 目標
 
 **課內實作：**

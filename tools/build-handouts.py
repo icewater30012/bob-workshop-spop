@@ -64,7 +64,7 @@ for n,p in enumerate(sorted((BASE/'parts').glob('part-*.md')),1):
  section=f'<section id="part-{n}" hidden><div class="full-material" id="material-{n}">'+embedded+'</div><!-- full-material-end --></section>'
  s=re.sub(pat,lambda m:section,s,count=1,flags=re.S)
 # Overview order follows Markdown; the choice cards are always last.
-overview=(BASE/'README.md').read_text();info=overview[overview.index('## 前情提要'):overview.index('## 選擇組合')]
+overview=(BASE/'README.md').read_text();info=overview[overview.index('## Workshop 目標'):overview.index('## 選擇組合')]
 home=re.search(r'<section id="home">.*?</section>',s,re.S)[0]
 cards=re.search(r'<div class="combos">.*?</div>(?=<div class="overview-info">|</section>|\s*<)',home,re.S)
 # Card grid contains only article elements, so its first closing div ends the grid.
