@@ -62,7 +62,7 @@ openssl version</code></pre>
 【驗證】
 - 啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。</code></pre>
 <p><strong>驗證函式使用方式：</strong></p>
-<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認CA 與本次 leaf的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
+<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認 CA 與本次 leaf 的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
 <pre><code class="language-bash">set -o pipefail
@@ -104,7 +104,7 @@ check_cert() (
 <p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
-<p>檢查 HTTPS／keystore 設定，記錄預設憑證的序號。確認 Agent 尚未執行。</p>
+<p>檢查 HTTPS／keystore 設定，記錄預設憑證的序號，並確認連得到 Vault。確認 Agent 尚未執行。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
 1. TLS 憑證生命週期的申請、核發、部署、監控、輪換與撤銷。
@@ -117,6 +117,7 @@ check_cert() (
 請畫出 Vault PKI、Vault Agent、deploy-hook.sh 與 Liberty 的關係，指出每個元件負責什麼。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">vault version
+vault status   # 確認連得到 Vault；若報 certificate 錯誤，先 source ~/.bashrc
 record_baseline</code></pre>
 <p><strong>檢查點：</strong> 取得舊憑證序號（<code>record_baseline</code> 輸出）。</p>
 <h3>2. 完成 Agent 設定｜12 分鐘</h3>
@@ -143,6 +144,7 @@ record_baseline</code></pre>
 <pre><code class="language-text">請產生 deploy-hook.sh，需求如下：
 - Agent 以 vpcuser 執行；hook 內讀寫 Liberty 檔案與重啟 Liberty 都要用 sudo。
 - 使用互斥鎖。
+- 把部署的 leaf 憑證另存為 /home/vpcuser/clm-workshop/server.crt（0644），供 check_cert 比對。
 - 從單一 bundle 拆出配對的 key／cert／chain，驗證私鑰與憑證公鑰一致及憑證鏈。
 - 在暫存目錄轉成 PKCS12，再備份並原子替換 live keystore。
 - 明確處理每一步失敗；只有內容變更時才受控重啟 Liberty。
@@ -152,7 +154,7 @@ record_baseline</code></pre>
 <pre><code class="language-bash">bash -n ./deploy-hook.sh
 chmod 700 ./deploy-hook.sh
 # hook 由 Agent 成功渲染後觸發，勿在 bundle 尚未產生前執行</code></pre>
-<p><strong>檢查點：</strong> hook 與首次部署（換掉預設憑證）紀錄。</p>
+<p><strong>檢查點：</strong> 語法通過的 deploy-hook.sh（首次部署會在步驟 4 啟動 Agent 時發生）。</p>
 <h3>4. 觀察自動輪換｜13 分鐘</h3>
 <p>啟動 Agent，在 template 的 pkiCert 指定 <code>ttl=3m</code>（role 上限 168 小時，3 分鐘可行），持續觀察約兩個週期及線上憑證序號。</p>
 <p><strong>給 Bob 的提示：</strong></p>
@@ -178,31 +180,25 @@ vault agent -config=./liberty-agent.hcl 2&gt;&amp;1 | tee logs/agent.log
 <pre><code class="language-bash"># 在另一個 SSH Terminal 重新設定本頁驗證變數並載入 check_cert 函式
 check_cert | tee after.txt
 tail -n 50 logs/agent.log
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
-fi</code></pre>
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true</code></pre>
 <p><strong>檢查點：</strong> 自動簽發／部署紀錄與線上序號一致。</p>
 <h3>6. 成果交付｜5 分鐘</h3>
-<p>停止短 TTL 測試 Agent，恢復講師指定的基準或一般 TTL 設定，提交設定、hook 與部署後憑證資訊（有舊憑證才附前後序號）。</p>
+<p>停止短 TTL 測試 Agent（或把 template 的 <code>ttl</code> 改回 <code>1h</code>），提交設定、hook 與部署後憑證資訊（附換證前後序號）。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請依實際紀錄整理五行交接：架構、觸發條件、驗證方式、失敗保護及未完成事項。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
-<pre><code class="language-bash"># 在 Agent 前景 Terminal 按 Ctrl+C，恢復講師指定的一般 TTL 設定
+<pre><code class="language-bash"># 在 Agent 前景 Terminal 按 Ctrl+C 停止 Agent；之後若要保留自動輪換，把 template 的 ttl 改回 1h
 check_cert | tee after.txt
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
-fi</code></pre>
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true</code></pre>
 <p><strong>檢查點：</strong> 交接紀錄與測試程序清理。</p>
 <h2>Agent 注意事項</h2>
 <p>PKI leaf 輪換是重新簽發；AppRole Token renewal 是另一件事。短 TTL 測試須確認 role、CA 剩餘效期及 Agent template 行為；若未觀察到自動輪換，記錄未完成事項。</p>
 <p><a href="https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent/template">官方 Agent template 說明</a></p>
 <h2>60 分鐘內的完成標準</h2>
-<ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>Agent 自動觸發至少一次重新簽發與部署，日誌及線上序號吻合。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
+<ol><li>HTTPS 已由預設憑證換成本次憑證，CA 信任、IP SAN 與憑證指紋驗證通過，且序號與換證前（<code>before.txt</code>）不同。</li><li>Agent 自動觸發至少一次重新簽發與部署，日誌及線上序號吻合。</li><li>留下程式／設定、部署後憑證資訊（附換證前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
-<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>舊憑證序號（record_baseline 輸出）。</td></tr><tr><td>05–17 分</td><td>完成 Agent 設定</td><td>可啟動的 HCL 與 template。</td></tr><tr><td>17–32 分</td><td>補完部署 hook</td><td>hook 與首次部署（換掉預設憑證）紀錄。</td></tr><tr><td>32–45 分</td><td>觀察自動輪換</td><td>至少一次無人工執行 hook 的線上序號變更。</td></tr><tr><td>45–55 分</td><td>核對自動輪換結果</td><td>自動簽發／部署紀錄與線上序號一致。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄與測試程序清理。</td></tr></table></div></main></body></html>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>舊憑證序號（record_baseline 輸出）。</td></tr><tr><td>05–17 分</td><td>完成 Agent 設定</td><td>可啟動的 HCL 與 template。</td></tr><tr><td>17–32 分</td><td>補完部署 hook</td><td>語法通過的 deploy-hook.sh。</td></tr><tr><td>32–45 分</td><td>觀察自動輪換</td><td>至少一次無人工執行 hook 的線上序號變更。</td></tr><tr><td>45–55 分</td><td>核對自動輪換結果</td><td>自動簽發／部署紀錄與線上序號一致。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄與測試程序清理。</td></tr></table></div></main></body></html>

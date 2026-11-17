@@ -161,9 +161,9 @@ check_cert() (
 再根據本次環境：
 請檢查本組 Liberty 的 server.xml、執行狀態與既有公開憑證，列出：
 - HTTPS 是否啟用、port、keystore 路徑及格式。
-- 有憑證時才列出序號、SAN 與到期日；沒有則標示首次部署。
+- 目前憑證的序號、SAN 與到期日。
 - 本次 server.crt、server.key、keystore.p12 的規劃路徑及服務控制方式。
-不要顯示私鑰或密碼，也不要假設已有 env.sh、程式骨架或測試憑證。
+不要顯示私鑰或密碼，也不要假設已有 env.sh 或程式骨架。
 ```
 
 **操作指令（Liberty VM）：**
@@ -186,7 +186,7 @@ record_baseline
 - 方式：直接用 openssl req -x509 建立 server.key 與伺服器自簽 server.crt；不建立 CA，不產生 ca.crt／ca.key，也不需要 CSR 送簽流程。
 - 憑證屬性：basicConstraints=critical,CA:FALSE、適合 TLS server 的 keyUsage、extendedKeyUsage=serverAuth。
 - 名稱：CN 僅作標籤；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
-- 參數：效期、IP、輸出路徑用參數傳入；每次產生新憑證都使用新序號。
+- 參數：效期、IP、輸出路徑用參數傳入；輸出到 /home/vpcuser/clm-workshop/：server.key（0600）、server.crt（0644）；每次產生新憑證都使用新序號。
 - 安全：使用 umask 077；檢查自簽簽章、IP SAN 與私鑰配對，不顯示私鑰。
 ```
 
@@ -234,11 +234,11 @@ chmod 700 ./cert-rotate.sh
 | 原子替換 | 先把新 PKCS12 完整產生並驗證，再一次切換檔名，避免 Liberty 讀到寫了一半的檔案 | 暫存檔放在目標檔案同一個檔案系統；它不等於免重啟或自動 rollback |
 | `FORCE=true` | 暫時略過「未到輪換門檻就 skip」的判斷，方便課堂測試 | 只用在 `cert-rotate.sh` 的手動測試；一般執行與 cron 不加，且仍須做完整驗證 |
 
-`FORCE` 是本課要求 Bob 寫進腳本的自訂環境變數，不是 Shell 或 OpenSSL 內建功能；`FORCE=true ./cert-rotate.sh` 只對這一次執行生效。首次部署不需要它，產生憑證的 `issue-cert.sh` 也不需要它。
+`FORCE` 是本課要求 Bob 寫進腳本的自訂環境變數，不是 Shell 或 OpenSSL 內建功能；`FORCE=true ./cert-rotate.sh` 只對這一次執行生效。本課第一次換掉未到期的預設憑證時需要它；產生憑證的 `issue-cert.sh` 不需要。
 
 ### 4. 實測與排程｜13 分鐘
 
-首次沒有 keystore 時，一般執行就應部署；已有憑證時才用強制模式測試一次輪換。完成後一般重跑應 skip，並加入每日 02:00 排程。
+預設憑證尚未到期，所以第一次要用 `FORCE=true` 換掉它；完成後一般重跑應 skip，並加入每日 02:00 排程。
 
 **給 Bob 的提示：**
 
@@ -252,10 +252,8 @@ chmod 700 ./cert-rotate.sh
 **操作指令（Liberty VM）：**
 
 ```bash
-# 首次部署：沒有 keystore 就直接建立，不需 FORCE
-./cert-rotate.sh
-# 已有尚未到期的憑證，但想測試一次換證時，才改用：
-# FORCE=true ./cert-rotate.sh
+# 預設憑證未到期，第一次用 FORCE 強制換證
+FORCE=true ./cert-rotate.sh
 check_cert | tee after.txt
 ./cert-rotate.sh
 # 第二次應 skip
@@ -299,7 +297,7 @@ check_cert
 
 ### 6. 成果交付｜5 分鐘
 
-提交簽發腳本、輪換腳本、排程與部署後憑證資訊（有舊憑證才附前後序號）。
+提交簽發腳本、輪換腳本、排程與部署後憑證資訊（附換證前後序號）。
 
 **給 Bob 的提示：**
 
@@ -311,16 +309,12 @@ check_cert
 
 ```bash
 check_cert | tee after.txt
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo '首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。'
-fi
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true
 sudo crontab -l
 ```
 
 **檢查點：** 交接紀錄。
-
 
 ## crontab 設定範例
 
@@ -336,7 +330,7 @@ sudo crontab -l
 
 1. Liberty HTTPS 提供本次自簽憑證，IP SAN 與憑證指紋驗證通過。
 2. 一般重跑未達門檻時 skip；cron 已設定，精簡環境手動測試通過。
-3. 留下腳本、排程、部署後憑證資訊與簡短交接；有舊憑證才附前後序號。
+3. 留下腳本、排程、部署後憑證資訊與簡短交接；附換證前後序號。
 4. 瀏覽器開啟 `https://<IP>:9443/adminCenter/`（`admin`／`admin123456`），檢視網址列憑證，序號與 `check_cert` 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。
 
 ## 延伸練習（不計入 60 分鐘）
@@ -353,4 +347,4 @@ sudo crontab -l
 | 15–32 分 | 建立換證腳本 | 語法通過，具到期判斷及備份 |
 | 32–45 分 | 實測與排程 | 序號變更、重跑 skip、cron 已設定 |
 | 45–55 分 | 驗證排程環境 | 精簡環境執行成功，服務正常 |
-| 55–60 分 | 成果交付 | 腳本、排程與部署後憑證資訊（有舊憑證才附前後序號）齊全 |
+| 55–60 分 | 成果交付 | 腳本、排程與部署後憑證資訊（附換證前後序號）齊全 |

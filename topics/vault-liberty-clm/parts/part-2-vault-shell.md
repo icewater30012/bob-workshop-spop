@@ -130,7 +130,7 @@ openssl version
 
 - 在 Liberty VM 的 Terminal 定義一次。
 - `record_baseline` 在步驟 1 使用；`check_cert` 在部署完成後使用。
-- 執行 `check_cert` 前，先確認CA 與本次 leaf的檔名與實際輸出一致。
+- 執行 `check_cert` 前，先確認 CA 與本次 leaf 的檔名與實際輸出一致。
 - 這些變數只供驗證使用。
 
 <details>
@@ -185,7 +185,7 @@ role `liberty-server` 已設定 `allow_ip_sans=true`、`require_cn=false`，簽�
 
 ### 1. 辨識現況｜5 分鐘
 
-檢查 HTTPS／keystore 設定，有舊憑證才記錄；確認 Vault 內網連線及每組 role 名稱。
+檢查 HTTPS／keystore 設定，記錄預設憑證的序號；確認連得到 Vault，並認識 role `liberty-server`。
 
 **給 Bob 的提示：**
 
@@ -205,6 +205,7 @@ role `liberty-server` 已設定 `allow_ip_sans=true`、`require_cn=false`，簽�
 
 ```bash
 vault version
+vault status   # 確認連得到 Vault；若報 certificate 錯誤，先 source ~/.bashrc
 record_baseline
 ```
 
@@ -221,7 +222,8 @@ record_baseline
 - 從環境設定取得 Vault 位址、mount（pki_int）、role（liberty-server）、CN 與 SAN。
 - 檢查 API 錯誤與必要欄位。
 - 把同一份 JSON 回應拆成 key、leaf 與完整 ca_chain；ca_chain 輸出到 chain.pem。
-- 檔案權限只允許執行帳號讀取。
+- 輸出到 /home/vpcuser/clm-workshop/：私鑰 server.key（0600）、leaf 憑證 server.crt（0644）、完整 ca_chain 的 chain.pem（0644）。
+- 申請時帶 ip_sans（VM IP 與 127.0.0.1）與 ttl 參數。
 ```
 
 **操作指令（Liberty VM）：**
@@ -248,6 +250,8 @@ chmod 700 ./request-cert.sh
 - TTL：新憑證 TTL 自行設定，但不得超過 role 上限（168 小時）；輪換門檻須小於 TTL。
 - 部署：先在暫存目錄驗證配對及鏈並轉 PKCS12，再備份並原子替換 live keystore。
 - 重啟與驗證：用已確認的服務控制方式重啟，驗證線上序號；失敗就還原並恢復服務。
+- Vault 連線：腳本內明確設定 VAULT_ADDR=https://128.168.136.176:8200 與 VAULT_CACERT=/home/vpcuser/clm-workshop/vault-api-ca.pem（cron 不會載入 ~/.bashrc）。
+- 輸出：新 leaf 憑證存為 /home/vpcuser/clm-workshop/server.crt（0644），供 check_cert 比對。
 - 機密：Token 和 keystore 密碼從受限本機檔讀取，不寫入日誌。
 ```
 
@@ -311,6 +315,7 @@ exit   # 回到 vpcuser
 # 請 Bob 先補齊與 cron 相同的實際參數，再執行
 # 必要參數接在 cert-rotate.sh 後；認證值只從受限本機檔案讀取
 # 模擬 root 的 cron 環境；腳本放在 vpcuser 的工作目錄，用絕對路徑
+# （腳本內已明確設定 VAULT_ADDR、VAULT_CACERT，所以這裡不必再傳）
 sudo env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin \
   /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh
 echo "exit code: $?"
@@ -321,7 +326,7 @@ check_cert
 
 ### 6. 成果交付｜5 分鐘
 
-提交腳本、排程與部署後憑證資訊（有舊憑證才附前後序號），說明 Token 到期後誰負責處理。
+提交腳本、排程與部署後憑證資訊（附換證前後序號），說明 Token 到期後誰負責處理。
 
 **給 Bob 的提示：**
 
@@ -333,11 +338,8 @@ check_cert
 
 ```bash
 check_cert | tee after.txt
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo '首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。'
-fi
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true
 sudo crontab -l
 ```
 
@@ -356,9 +358,9 @@ Token 由腳本讀取受限本機檔案，不放在 cron 指令或日誌。課�
 
 ## 60 分鐘內的完成標準
 
-1. 首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。
+1. HTTPS 已由預設憑證換成本次憑證，CA 信任、IP SAN 與憑證指紋驗證通過，且序號與換證前（`before.txt`）不同。
 2. 重跑未到期時 skip；cron 已設定，精簡環境手動測試通過。
-3. 留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。
+3. 留下程式／設定、部署後憑證資訊（附換證前後序號）與簡短交接，不含秘密。
 4. 瀏覽器開啟 `https://<IP>:9443/adminCenter/`（`admin`／`admin123456`），檢視網址列憑證，序號與 `check_cert` 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。
 
 ## 延伸練習（不計入 60 分鐘）

@@ -78,7 +78,7 @@ openssl version</code></pre>
 【驗證】
 - 啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。</code></pre>
 <p><strong>驗證函式使用方式：</strong></p>
-<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認CA 與本次 leaf的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
+<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認 CA 與本次 leaf 的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
 <pre><code class="language-bash">set -o pipefail
@@ -120,7 +120,7 @@ check_cert() (
 <p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
-<p>檢查 HTTPS／keystore 設定，記錄預設憑證的序號。確認 Agent 尚未執行。</p>
+<p>檢查 HTTPS／keystore 設定，記錄預設憑證的序號，並確認連得到 Vault。確認 Agent 尚未執行。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
 1. TLS 憑證生命週期的申請、核發、部署、監控、輪換與撤銷。
@@ -133,6 +133,7 @@ check_cert() (
 請畫出 Vault PKI、Vault Agent、deploy-hook.sh 與 Liberty 的關係，指出每個元件負責什麼。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">vault version
+vault status   # 確認連得到 Vault；若報 certificate 錯誤，先 source ~/.bashrc
 record_baseline</code></pre>
 <p><strong>檢查點：</strong> 取得舊憑證序號（<code>record_baseline</code> 輸出）。</p>
 <h3>2. 完成 Agent 設定｜12 分鐘</h3>
@@ -159,6 +160,7 @@ record_baseline</code></pre>
 <pre><code class="language-text">請產生 deploy-hook.sh，需求如下：
 - Agent 以 vpcuser 執行；hook 內讀寫 Liberty 檔案與重啟 Liberty 都要用 sudo。
 - 使用互斥鎖。
+- 把部署的 leaf 憑證另存為 /home/vpcuser/clm-workshop/server.crt（0644），供 check_cert 比對。
 - 從單一 bundle 拆出配對的 key／cert／chain，驗證私鑰與憑證公鑰一致及憑證鏈。
 - 在暫存目錄轉成 PKCS12，再備份並原子替換 live keystore。
 - 明確處理每一步失敗；只有內容變更時才受控重啟 Liberty。
@@ -168,7 +170,7 @@ record_baseline</code></pre>
 <pre><code class="language-bash">bash -n ./deploy-hook.sh
 chmod 700 ./deploy-hook.sh
 # hook 由 Agent 成功渲染後觸發，勿在 bundle 尚未產生前執行</code></pre>
-<p><strong>檢查點：</strong> hook 與首次部署（換掉預設憑證）紀錄。</p>
+<p><strong>檢查點：</strong> 語法通過的 deploy-hook.sh（首次部署會在步驟 4 啟動 Agent 時發生）。</p>
 <h3>4. 觀察自動輪換｜13 分鐘</h3>
 <p>啟動 Agent，在 template 的 pkiCert 指定 <code>ttl=3m</code>（role 上限 168 小時，3 分鐘可行），持續觀察約兩個週期及線上憑證序號。</p>
 <p><strong>給 Bob 的提示：</strong></p>
@@ -194,34 +196,28 @@ vault agent -config=./liberty-agent.hcl 2&gt;&amp;1 | tee logs/agent.log
 <pre><code class="language-bash"># 在另一個 SSH Terminal 重新設定本頁驗證變數並載入 check_cert 函式
 check_cert | tee after.txt
 tail -n 50 logs/agent.log
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
-fi</code></pre>
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true</code></pre>
 <p><strong>檢查點：</strong> 自動簽發／部署紀錄與線上序號一致。</p>
 <h3>6. 成果交付｜5 分鐘</h3>
-<p>停止短 TTL 測試 Agent，恢復講師指定的基準或一般 TTL 設定，提交設定、hook 與部署後憑證資訊（有舊憑證才附前後序號）。</p>
+<p>停止短 TTL 測試 Agent（或把 template 的 <code>ttl</code> 改回 <code>1h</code>），提交設定、hook 與部署後憑證資訊（附換證前後序號）。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請依實際紀錄整理五行交接：架構、觸發條件、驗證方式、失敗保護及未完成事項。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
-<pre><code class="language-bash"># 在 Agent 前景 Terminal 按 Ctrl+C，恢復講師指定的一般 TTL 設定
+<pre><code class="language-bash"># 在 Agent 前景 Terminal 按 Ctrl+C 停止 Agent；之後若要保留自動輪換，把 template 的 ttl 改回 1h
 check_cert | tee after.txt
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
-fi</code></pre>
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true</code></pre>
 <p><strong>檢查點：</strong> 交接紀錄與測試程序清理。</p>
 <h2>Agent 注意事項</h2>
 <p>PKI leaf 輪換是重新簽發；AppRole Token renewal 是另一件事。短 TTL 測試須確認 role、CA 剩餘效期及 Agent template 行為；若未觀察到自動輪換，記錄未完成事項。</p>
 <p><a href="https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent/template">官方 Agent template 說明</a></p>
 <h2>60 分鐘內的完成標準</h2>
-<ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>Agent 自動觸發至少一次重新簽發與部署，日誌及線上序號吻合。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
+<ol><li>HTTPS 已由預設憑證換成本次憑證，CA 信任、IP SAN 與憑證指紋驗證通過，且序號與換證前（<code>before.txt</code>）不同。</li><li>Agent 自動觸發至少一次重新簽發與部署，日誌及線上序號吻合。</li><li>留下程式／設定、部署後憑證資訊（附換證前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
-<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>舊憑證序號（record_baseline 輸出）。</td></tr><tr><td>05–17 分</td><td>完成 Agent 設定</td><td>可啟動的 HCL 與 template。</td></tr><tr><td>17–32 分</td><td>補完部署 hook</td><td>hook 與首次部署（換掉預設憑證）紀錄。</td></tr><tr><td>32–45 分</td><td>觀察自動輪換</td><td>至少一次無人工執行 hook 的線上序號變更。</td></tr><tr><td>45–55 分</td><td>核對自動輪換結果</td><td>自動簽發／部署紀錄與線上序號一致。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄與測試程序清理。</td></tr></table></div></div><!-- full-material-end --></section><section id="part-2" hidden><div class="full-material" id="material-2"><h1>Part 2｜Vault PKI ＋ Shell／crontab</h1>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>舊憑證序號（record_baseline 輸出）。</td></tr><tr><td>05–17 分</td><td>完成 Agent 設定</td><td>可啟動的 HCL 與 template。</td></tr><tr><td>17–32 分</td><td>補完部署 hook</td><td>語法通過的 deploy-hook.sh。</td></tr><tr><td>32–45 分</td><td>觀察自動輪換</td><td>至少一次無人工執行 hook 的線上序號變更。</td></tr><tr><td>45–55 分</td><td>核對自動輪換結果</td><td>自動簽發／部署紀錄與線上序號一致。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄與測試程序清理。</td></tr></table></div></div><!-- full-material-end --></section><section id="part-2" hidden><div class="full-material" id="material-2"><h1>Part 2｜Vault PKI ＋ Shell／crontab</h1>
 <p><a href="#home">← 回組合總覽</a> · <a href="#part-2">開啟分頁教材</a></p>
 <p><strong>難度：中階｜總時間：60 分鐘｜適合：熟悉 Shell、想串接集中式簽發的維運人員</strong></p>
 <h2>主機部署架構</h2>
@@ -284,7 +280,7 @@ openssl version</code></pre>
 【驗證】
 - 啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。</code></pre>
 <p><strong>驗證函式使用方式：</strong></p>
-<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認CA 與本次 leaf的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
+<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認 CA 與本次 leaf 的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
 <pre><code class="language-bash">set -o pipefail
@@ -326,7 +322,7 @@ check_cert() (
 <p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
-<p>檢查 HTTPS／keystore 設定，有舊憑證才記錄；確認 Vault 內網連線及每組 role 名稱。</p>
+<p>檢查 HTTPS／keystore 設定，記錄預設憑證的序號；確認連得到 Vault，並認識 role <code>liberty-server</code>。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
 1. TLS 憑證生命週期的申請、核發、部署、監控、輪換與撤銷。
@@ -339,6 +335,7 @@ check_cert() (
 請根據環境設定解釋簽發 API、role 與 TTL；Token 只讀取本機受限檔案，不要要求我貼 Token。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">vault version
+vault status   # 確認連得到 Vault；若報 certificate 錯誤，先 source ~/.bashrc
 record_baseline</code></pre>
 <p><strong>檢查點：</strong> 基準資料與 API 路徑。</p>
 <h3>2. 取得配對憑證｜10 分鐘</h3>
@@ -348,7 +345,8 @@ record_baseline</code></pre>
 - 從環境設定取得 Vault 位址、mount（pki_int）、role（liberty-server）、CN 與 SAN。
 - 檢查 API 錯誤與必要欄位。
 - 把同一份 JSON 回應拆成 key、leaf 與完整 ca_chain；ca_chain 輸出到 chain.pem。
-- 檔案權限只允許執行帳號讀取。</code></pre>
+- 輸出到 /home/vpcuser/clm-workshop/：私鑰 server.key（0600）、leaf 憑證 server.crt（0644）、完整 ca_chain 的 chain.pem（0644）。
+- 申請時帶 ip_sans（VM IP 與 127.0.0.1）與 ttl 參數。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">bash -n ./request-cert.sh
 chmod 700 ./request-cert.sh
@@ -364,6 +362,8 @@ chmod 700 ./request-cert.sh
 - TTL：新憑證 TTL 自行設定，但不得超過 role 上限（168 小時）；輪換門檻須小於 TTL。
 - 部署：先在暫存目錄驗證配對及鏈並轉 PKCS12，再備份並原子替換 live keystore。
 - 重啟與驗證：用已確認的服務控制方式重啟，驗證線上序號；失敗就還原並恢復服務。
+- Vault 連線：腳本內明確設定 VAULT_ADDR=https://128.168.136.176:8200 與 VAULT_CACERT=/home/vpcuser/clm-workshop/vault-api-ca.pem（cron 不會載入 ~/.bashrc）。
+- 輸出：新 leaf 憑證存為 /home/vpcuser/clm-workshop/server.crt（0644），供 check_cert 比對。
 - 機密：Token 和 keystore 密碼從受限本機檔讀取，不寫入日誌。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">bash -n ./cert-rotate.sh
@@ -401,22 +401,20 @@ exit   # 回到 vpcuser</code></pre>
 <pre><code class="language-bash"># 請 Bob 先補齊與 cron 相同的實際參數，再執行
 # 必要參數接在 cert-rotate.sh 後；認證值只從受限本機檔案讀取
 # 模擬 root 的 cron 環境；腳本放在 vpcuser 的工作目錄，用絕對路徑
+# （腳本內已明確設定 VAULT_ADDR、VAULT_CACERT，所以這裡不必再傳）
 sudo env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin \
   /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh
 echo &quot;exit code: $?&quot;
 check_cert</code></pre>
 <p><strong>檢查點：</strong> 精簡環境手動測試成功，未到期時 skip。</p>
 <h3>6. 成果交付｜5 分鐘</h3>
-<p>提交腳本、排程與部署後憑證資訊（有舊憑證才附前後序號），說明 Token 到期後誰負責處理。</p>
+<p>提交腳本、排程與部署後憑證資訊（附換證前後序號），說明 Token 到期後誰負責處理。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請依實測整理五行維運交接，列出排程、觸發門檻、驗證、恢復及 Token 到期限制。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">check_cert | tee after.txt
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
-fi
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true
 sudo crontab -l</code></pre>
 <p><strong>檢查點：</strong> 交接紀錄。</p>
 <h2>crontab 設定範例</h2>
@@ -424,7 +422,7 @@ sudo crontab -l</code></pre>
 <pre><code class="language-cron">0 2 * * * /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh &gt;&gt; /home/vpcuser/clm-workshop/cron.log 2&gt;&amp;1</code></pre>
 <p>Token 由腳本讀取受限本機檔案，不放在 cron 指令或日誌。課堂手動測試同一命令，不必等到凌晨。</p>
 <h2>60 分鐘內的完成標準</h2>
-<ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>重跑未到期時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
+<ol><li>HTTPS 已由預設憑證換成本次憑證，CA 信任、IP SAN 與憑證指紋驗證通過，且序號與換證前（<code>before.txt</code>）不同。</li><li>重跑未到期時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下程式／設定、部署後憑證資訊（附換證前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
@@ -489,7 +487,7 @@ openssl version</code></pre>
 【驗證】
 - 啟動後比對線上與本次產出的 leaf 憑證指紋，並驗證 CA 信任與 IP SAN。</code></pre>
 <p><strong>驗證函式使用方式：</strong></p>
-<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認CA 與本次 leaf的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
+<ul><li>在 Liberty VM 的 Terminal 定義一次。</li><li><code>record_baseline</code> 在步驟 1 使用；<code>check_cert</code> 在部署完成後使用。</li><li>執行 <code>check_cert</code> 前，先確認 CA 與本次 leaf 的檔名與實際輸出一致。</li><li>這些變數只供驗證使用。</li></ul>
 <details>
 <summary>展開設定與驗證函式：record_baseline／check_cert</summary>
 <pre><code class="language-bash">set -o pipefail
@@ -551,8 +549,9 @@ record_baseline</code></pre>
 <p>用 Bob 建立測試 CA，再完成 server key、CSR、IP SAN 與簽發任務；CA 只在不存在時建立。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請產生單一 playbook.yml，需求如下：
-- 工具：用 ansible.builtin 與已安裝的 OpenSSL；改動 Liberty 的 task 要加 become: true；產出檔放 /home/vpcuser/clm-workshop/。
-- CA：路徑由 ca_cert_file、ca_key_file 變數指定；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。
+- 工具：用 ansible.builtin 與已安裝的 OpenSSL；改動 Liberty 的 task 要加 become: true。
+- 輸出：全部放 /home/vpcuser/clm-workshop/；CA 憑證 ca.crt（0644）、CA 私鑰 ca.key（0600）、伺服器憑證 server.crt（0644）、私鑰 server.key（0600）。
+- CA：路徑由 ca_cert_file、ca_key_file 變數指定（上述 ca.crt、ca.key）；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。
 - 伺服器憑證：IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1；CN 僅作標籤；每次輪換使用新序號。
 - 效期：CA 與 leaf 效期自行設定，CA 效期需涵蓋 leaf。
 - 錯誤：失敗時停止，不忽略錯誤。</code></pre>
@@ -606,15 +605,12 @@ diff -u rerun-before.txt rerun-after.txt</code></pre>
 <pre><code class="language-text">請整理五行交接並說明擴成多台時需要增加哪些 inventory 與逐台驗證控制，不要在本次實作展開。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">check_cert | tee after.txt
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
-fi
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true
 # 提交 inventory、非機密變數範本、playbook.yml 與驗證摘要</code></pre>
 <p><strong>檢查點：</strong> 交接紀錄。</p>
 <h2>60 分鐘內的完成標準</h2>
-<ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>一般重跑不重新簽發、不替換 keystore、不重啟服務。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
+<ol><li>HTTPS 已由預設憑證換成本次憑證，CA 信任、IP SAN 與憑證指紋驗證通過，且序號與換證前（<code>before.txt</code>）不同。</li><li>一般重跑不重新簽發、不替換 keystore、不重啟服務。</li><li>留下程式／設定、部署後憑證資訊（附換證前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>進階 CA 階層建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
@@ -722,9 +718,9 @@ check_cert() (
 再根據本次環境：
 請檢查本組 Liberty 的 server.xml、執行狀態與既有公開憑證，列出：
 - HTTPS 是否啟用、port、keystore 路徑及格式。
-- 有憑證時才列出序號、SAN 與到期日；沒有則標示首次部署。
+- 目前憑證的序號、SAN 與到期日。
 - 本次 server.crt、server.key、keystore.p12 的規劃路徑及服務控制方式。
-不要顯示私鑰或密碼，也不要假設已有 env.sh、程式骨架或測試憑證。</code></pre>
+不要顯示私鑰或密碼，也不要假設已有 env.sh 或程式骨架。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">openssl version
 record_baseline</code></pre>
@@ -736,7 +732,7 @@ record_baseline</code></pre>
 - 方式：直接用 openssl req -x509 建立 server.key 與伺服器自簽 server.crt；不建立 CA，不產生 ca.crt／ca.key，也不需要 CSR 送簽流程。
 - 憑證屬性：basicConstraints=critical,CA:FALSE、適合 TLS server 的 keyUsage、extendedKeyUsage=serverAuth。
 - 名稱：CN 僅作標籤；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
-- 參數：效期、IP、輸出路徑用參數傳入；每次產生新憑證都使用新序號。
+- 參數：效期、IP、輸出路徑用參數傳入；輸出到 /home/vpcuser/clm-workshop/：server.key（0600）、server.crt（0644）；每次產生新憑證都使用新序號。
 - 安全：使用 umask 077；檢查自簽簽章、IP SAN 與私鑰配對，不顯示私鑰。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">bash -n ./issue-cert.sh
@@ -760,19 +756,17 @@ chmod 700 ./cert-rotate.sh</code></pre>
 <p><strong>檢查點：</strong> 可執行腳本與備份。</p>
 <h4>這三個設定是什麼？</h4>
 <div class="table-wrap"><table><tr><th>設定</th><th>用途</th><th>本課怎麼用</th></tr><tr><td>互斥鎖</td><td>排程與手動換證撞在一起時，只讓一份腳本執行，避免同時覆蓋檔案或重啟</td><td>用同一個 <code>flock</code> 鎖保護整段換證流程</td></tr><tr><td>原子替換</td><td>先把新 PKCS12 完整產生並驗證，再一次切換檔名，避免 Liberty 讀到寫了一半的檔案</td><td>暫存檔放在目標檔案同一個檔案系統；它不等於免重啟或自動 rollback</td></tr><tr><td><code>FORCE=true</code></td><td>暫時略過「未到輪換門檻就 skip」的判斷，方便課堂測試</td><td>只用在 <code>cert-rotate.sh</code> 的手動測試；一般執行與 cron 不加，且仍須做完整驗證</td></tr></table></div>
-<p><code>FORCE</code> 是本課要求 Bob 寫進腳本的自訂環境變數，不是 Shell 或 OpenSSL 內建功能；<code>FORCE=true ./cert-rotate.sh</code> 只對這一次執行生效。首次部署不需要它，產生憑證的 <code>issue-cert.sh</code> 也不需要它。</p>
+<p><code>FORCE</code> 是本課要求 Bob 寫進腳本的自訂環境變數，不是 Shell 或 OpenSSL 內建功能；<code>FORCE=true ./cert-rotate.sh</code> 只對這一次執行生效。本課第一次換掉未到期的預設憑證時需要它；產生憑證的 <code>issue-cert.sh</code> 不需要。</p>
 <h3>4. 實測與排程｜13 分鐘</h3>
-<p>首次沒有 keystore 時，一般執行就應部署；已有憑證時才用強制模式測試一次輪換。完成後一般重跑應 skip，並加入每日 02:00 排程。</p>
+<p>預設憑證尚未到期，所以第一次要用 <code>FORCE=true</code> 換掉它；完成後一般重跑應 skip，並加入每日 02:00 排程。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請產生 cron 排程（每日 02:00）：
 - 以 root 的 crontab 安裝，保留現有項目。
 - 腳本與產出一律用 /home/vpcuser/clm-workshop/ 絕對路徑，並帶明確的腳本參數。
 - 用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
-<pre><code class="language-bash"># 首次部署：沒有 keystore 就直接建立，不需 FORCE
-./cert-rotate.sh
-# 已有尚未到期的憑證，但想測試一次換證時，才改用：
-# FORCE=true ./cert-rotate.sh
+<pre><code class="language-bash"># 預設憑證未到期，第一次用 FORCE 強制換證
+FORCE=true ./cert-rotate.sh
 check_cert | tee after.txt
 ./cert-rotate.sh
 # 第二次應 skip
@@ -801,16 +795,13 @@ echo &quot;exit code: $?&quot;
 check_cert</code></pre>
 <p><strong>檢查點：</strong> 精簡環境執行成功，未到期時 skip，線上服務正常。</p>
 <h3>6. 成果交付｜5 分鐘</h3>
-<p>提交簽發腳本、輪換腳本、排程與部署後憑證資訊（有舊憑證才附前後序號）。</p>
+<p>提交簽發腳本、輪換腳本、排程與部署後憑證資訊（附換證前後序號）。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請根據實測整理五行交接，包含換證條件、憑證與私鑰位置、PKCS12 路徑、驗證及恢復方式。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">check_cert | tee after.txt
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
-fi
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true
 sudo crontab -l</code></pre>
 <p><strong>檢查點：</strong> 交接紀錄。</p>
 <h2>crontab 設定範例</h2>
@@ -818,8 +809,8 @@ sudo crontab -l</code></pre>
 <pre><code class="language-cron">0 2 * * * /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh &gt;&gt; /home/vpcuser/clm-workshop/cron.log 2&gt;&amp;1</code></pre>
 <p>腳本需有到期判斷、互斥鎖與日誌，且不能依賴目前 Terminal 的變數。課堂以相同指令手動測試，不必等到凌晨。</p>
 <h2>60 分鐘內的完成標準</h2>
-<ol><li>Liberty HTTPS 提供本次自簽憑證，IP SAN 與憑證指紋驗證通過。</li><li>一般重跑未達門檻時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下腳本、排程、部署後憑證資訊與簡短交接；有舊憑證才附前後序號。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
+<ol><li>Liberty HTTPS 提供本次自簽憑證，IP SAN 與憑證指紋驗證通過。</li><li>一般重跑未達門檻時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下腳本、排程、部署後憑證資訊與簡短交接；附換證前後序號。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>以錯誤憑證路徑測試失敗保護，確認不覆蓋線上 keystore；進一步練習部署失敗後還原。</li><li>AGENTS.md、Slash Command、可重用 Skill 與 Frontend Slides 簡報。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
-<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>找出憑證／keystore 路徑，記錄預設憑證序號</td></tr><tr><td>05–15 分</td><td>產生憑證</td><td>自簽簽章、IP SAN 與私鑰配對正確</td></tr><tr><td>15–32 分</td><td>建立換證腳本</td><td>語法通過，具到期判斷及備份</td></tr><tr><td>32–45 分</td><td>實測與排程</td><td>序號變更、重跑 skip、cron 已設定</td></tr><tr><td>45–55 分</td><td>驗證排程環境</td><td>精簡環境執行成功，服務正常</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>腳本、排程與部署後憑證資訊（有舊憑證才附前後序號）齊全</td></tr></table></div></div><!-- full-material-end --></section><footer><a href="README.html">完整總覽</a><p>時間為課程設計目標，須於授課環境預演確認。</p></footer></main><script>function show(){const id=location.hash.slice(1)||'home';const target=document.getElementById(id);const owner=target&&(target.tagName==='SECTION'?target:target.closest('main>section'));const valid=owner?owner.id:'home';document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==valid);document.querySelectorAll('nav a').forEach(a=>{if(a.dataset.page===valid)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});if(target&&owner&&target!==owner)requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));}addEventListener('hashchange',show);show();document.querySelectorAll('.copy').forEach(b=>b.addEventListener('click',async()=>{const t=b.previousElementSibling.textContent;try{await navigator.clipboard.writeText(t);b.textContent='已複製';}catch{b.textContent='請選取上方文字複製';}setTimeout(()=>b.textContent='複製提示',2000);}));</script></body></html>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>找出憑證／keystore 路徑，記錄預設憑證序號</td></tr><tr><td>05–15 分</td><td>產生憑證</td><td>自簽簽章、IP SAN 與私鑰配對正確</td></tr><tr><td>15–32 分</td><td>建立換證腳本</td><td>語法通過，具到期判斷及備份</td></tr><tr><td>32–45 分</td><td>實測與排程</td><td>序號變更、重跑 skip、cron 已設定</td></tr><tr><td>45–55 分</td><td>驗證排程環境</td><td>精簡環境執行成功，服務正常</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>腳本、排程與部署後憑證資訊（附換證前後序號）齊全</td></tr></table></div></div><!-- full-material-end --></section><footer><a href="README.html">完整總覽</a><p>時間為課程設計目標，須於授課環境預演確認。</p></footer></main><script>function show(){const id=location.hash.slice(1)||'home';const target=document.getElementById(id);const owner=target&&(target.tagName==='SECTION'?target:target.closest('main>section'));const valid=owner?owner.id:'home';document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==valid);document.querySelectorAll('nav a').forEach(a=>{if(a.dataset.page===valid)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});if(target&&owner&&target!==owner)requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));}addEventListener('hashchange',show);show();document.querySelectorAll('.copy').forEach(b=>b.addEventListener('click',async()=>{const t=b.previousElementSibling.textContent;try{await navigator.clipboard.writeText(t);b.textContent='已複製';}catch{b.textContent='請選取上方文字複製';}setTimeout(()=>b.textContent='複製提示',2000);}));</script></body></html>

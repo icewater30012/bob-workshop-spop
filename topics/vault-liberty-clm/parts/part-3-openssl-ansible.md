@@ -109,7 +109,7 @@ openssl version
 
 - 在 Liberty VM 的 Terminal 定義一次。
 - `record_baseline` 在步驟 1 使用；`check_cert` 在部署完成後使用。
-- 執行 `check_cert` 前，先確認CA 與本次 leaf的檔名與實際輸出一致。
+- 執行 `check_cert` 前，先確認 CA 與本次 leaf 的檔名與實際輸出一致。
 - 這些變數只供驗證使用。
 
 <details>
@@ -196,8 +196,9 @@ record_baseline
 
 ```text
 請產生單一 playbook.yml，需求如下：
-- 工具：用 ansible.builtin 與已安裝的 OpenSSL；改動 Liberty 的 task 要加 become: true；產出檔放 /home/vpcuser/clm-workshop/。
-- CA：路徑由 ca_cert_file、ca_key_file 變數指定；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。
+- 工具：用 ansible.builtin 與已安裝的 OpenSSL；改動 Liberty 的 task 要加 become: true。
+- 輸出：全部放 /home/vpcuser/clm-workshop/；CA 憑證 ca.crt（0644）、CA 私鑰 ca.key（0600）、伺服器憑證 server.crt（0644）、私鑰 server.key（0600）。
+- CA：路徑由 ca_cert_file、ca_key_file 變數指定（上述 ca.crt、ca.key）；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。
 - 伺服器憑證：IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1；CN 僅作標籤；每次輪換使用新序號。
 - 效期：CA 與 leaf 效期自行設定，CA 效期需涵蓋 leaf。
 - 錯誤：失敗時停止，不忽略錯誤。
@@ -299,11 +300,8 @@ diff -u rerun-before.txt rerun-after.txt
 
 ```bash
 check_cert | tee after.txt
-if [ -s before.txt ]; then
-  diff -u before.txt after.txt || true
-else
-  echo '首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。'
-fi
+# 預設憑證 vs 新憑證：序號應不同
+diff -u before.txt after.txt || true
 # 提交 inventory、非機密變數範本、playbook.yml 與驗證摘要
 ```
 
@@ -311,9 +309,9 @@ fi
 
 ## 60 分鐘內的完成標準
 
-1. 首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。
+1. HTTPS 已由預設憑證換成本次憑證，CA 信任、IP SAN 與憑證指紋驗證通過，且序號與換證前（`before.txt`）不同。
 2. 一般重跑不重新簽發、不替換 keystore、不重啟服務。
-3. 留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。
+3. 留下程式／設定、部署後憑證資訊（附換證前後序號）與簡短交接，不含秘密。
 4. 瀏覽器開啟 `https://<IP>:9443/adminCenter/`（`admin`／`admin123456`），檢視網址列憑證，序號與 `check_cert` 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。
 
 ## 延伸練習（不計入 60 分鐘）
