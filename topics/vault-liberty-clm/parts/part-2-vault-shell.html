@@ -117,9 +117,12 @@ chmod 700 ./cert-rotate.sh</code></pre>
 check_cert | tee after.txt
 ./cert-rotate.sh
 # 第二次應顯示未達門檻，略過簽發與重啟
+# cron 要以 root 執行（腳本需 sudo 操作 Liberty）：先切換成 root
+sudo -i
 crontab -l
 # 請 Bob 提供不開編輯器的安裝命令（讀出現有 crontab 再附加本課排程），保留其他項目
-crontab -l</code></pre>
+crontab -l
+exit   # 回到 vpcuser</code></pre>
 <p><strong>檢查點：</strong> 部署驗證、skip 紀錄與 crontab。</p>
 <h3>5. 驗證排程執行環境｜10 分鐘</h3>
 <p>確認換證腳本在 cron 的精簡環境下仍可取得必要設定，憑證未到期時會 skip。</p>
@@ -128,8 +131,9 @@ crontab -l</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash"># 請 Bob 先補齊與 cron 相同的實際參數，再執行
 # 必要參數接在 cert-rotate.sh 後；認證值只從受限本機檔案讀取
-env -i HOME=&quot;$HOME&quot; PATH=/usr/local/bin:/usr/bin:/bin \
-  /bin/bash &quot;$HOME/clm-workshop/cert-rotate.sh&quot;
+# 模擬 root 的 cron 環境；腳本放在 vpcuser 的工作目錄，用絕對路徑
+sudo env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin \
+  /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh
 echo &quot;exit code: $?&quot;
 check_cert</code></pre>
 <p><strong>檢查點：</strong> 精簡環境手動測試成功，未到期時 skip。</p>
@@ -144,11 +148,11 @@ if [ -s before.txt ]; then
 else
   echo &#x27;首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。&#x27;
 fi
-crontab -l</code></pre>
+sudo crontab -l</code></pre>
 <p><strong>檢查點：</strong> 交接紀錄。</p>
 <h2>crontab 設定範例</h2>
-<p>保留原有排程，將帳號、絕對路徑與必要腳本參數換成實際值：</p>
-<pre><code class="language-cron">0 2 * * * /bin/bash /home/ACCOUNT/clm-workshop/cert-rotate.sh &gt;&gt; /home/ACCOUNT/clm-workshop/cron.log 2&gt;&amp;1</code></pre>
+<p>排程裝在 root 的 crontab（先 <code>sudo -i</code> 切換成 root）；保留原有排程，腳本路徑為 vpcuser 的工作目錄，必要腳本參數換成實際值：</p>
+<pre><code class="language-cron">0 2 * * * /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh &gt;&gt; /home/vpcuser/clm-workshop/cron.log 2&gt;&amp;1</code></pre>
 <p>Token 由腳本讀取受限本機檔案，不放在 cron 指令或日誌。課堂手動測試同一命令，不必等到凌晨。</p>
 <h2>60 分鐘內的完成標準</h2>
 <ol><li>首次部署：HTTPS 成功提供本次憑證，CA 信任與 IP SAN 驗證通過；已有憑證則另外比較換證部署後憑證資訊（有舊憑證才附前後序號）。</li><li>重跑未到期時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下程式／設定、部署後憑證資訊（有舊憑證才附前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>

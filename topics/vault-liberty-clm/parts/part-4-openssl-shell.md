@@ -213,9 +213,12 @@ chmod 700 ./cert-rotate.sh
 check_cert | tee after.txt
 ./cert-rotate.sh
 # 第二次應 skip
+# cron 要以 root 執行（腳本需 sudo 操作 Liberty）：先切換成 root
+sudo -i
 crontab -l
 # 請 Bob 提供不開編輯器的安裝命令（讀出現有 crontab 再附加本課排程），保留其他項目
 crontab -l
+exit   # 回到 vpcuser
 ```
 
 **檢查點：** 線上新序號、skip 與 cron 設定。
@@ -236,8 +239,9 @@ crontab -l
 # 先請 Bob 依實際腳本參數補齊測試命令，再執行
 # 以下適用腳本已具備明確參數或已確認的非機密預設值
 # 若需參數，須加在 cert-rotate.sh 後，與 cron 完全一致
-env -i HOME="$HOME" PATH=/usr/local/bin:/usr/bin:/bin \
-  /bin/bash "$HOME/clm-workshop/cert-rotate.sh"
+# 模擬 root 的 cron 環境；腳本放在 vpcuser 的工作目錄，用絕對路徑
+sudo env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin \
+  /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh
 echo "exit code: $?"
 check_cert
 ```
@@ -263,7 +267,7 @@ if [ -s before.txt ]; then
 else
   echo '首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。'
 fi
-crontab -l
+sudo crontab -l
 ```
 
 **檢查點：** 交接紀錄。
@@ -271,10 +275,10 @@ crontab -l
 
 ## crontab 設定範例
 
-在 Liberty VM 執行 `crontab -e`，保留原有排程。將帳號、路徑與必要腳本參數改成該組實際值：
+排程裝在 root 的 crontab（先 `sudo -i` 切換成 root）；保留原有排程，腳本路徑為 vpcuser 的工作目錄，必要腳本參數換成該組實際值：
 
 ```cron
-0 2 * * * /bin/bash /home/ACCOUNT/clm-workshop/cert-rotate.sh >> /home/ACCOUNT/clm-workshop/cron.log 2>&1
+0 2 * * * /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh >> /home/vpcuser/clm-workshop/cron.log 2>&1
 ```
 
 腳本需有到期判斷、互斥鎖與日誌，且不能依賴目前 Terminal 的變數。課堂以相同指令手動測試，不必等到凌晨。

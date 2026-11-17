@@ -221,9 +221,12 @@ FORCE=true ./cert-rotate.sh
 check_cert | tee after.txt
 ./cert-rotate.sh
 # 第二次應顯示未達門檻，略過簽發與重啟
+# cron 要以 root 執行（腳本需 sudo 操作 Liberty）：先切換成 root
+sudo -i
 crontab -l
 # 請 Bob 提供不開編輯器的安裝命令（讀出現有 crontab 再附加本課排程），保留其他項目
 crontab -l
+exit   # 回到 vpcuser
 ```
 
 **檢查點：** 部署驗證、skip 紀錄與 crontab。
@@ -243,8 +246,9 @@ crontab -l
 ```bash
 # 請 Bob 先補齊與 cron 相同的實際參數，再執行
 # 必要參數接在 cert-rotate.sh 後；認證值只從受限本機檔案讀取
-env -i HOME="$HOME" PATH=/usr/local/bin:/usr/bin:/bin \
-  /bin/bash "$HOME/clm-workshop/cert-rotate.sh"
+# 模擬 root 的 cron 環境；腳本放在 vpcuser 的工作目錄，用絕對路徑
+sudo env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin \
+  /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh
 echo "exit code: $?"
 check_cert
 ```
@@ -270,7 +274,7 @@ if [ -s before.txt ]; then
 else
   echo '首次部署：以線上與本次產出憑證一致作為驗收，不比較舊序號。'
 fi
-crontab -l
+sudo crontab -l
 ```
 
 **檢查點：** 交接紀錄。
@@ -278,10 +282,10 @@ crontab -l
 
 ## crontab 設定範例
 
-保留原有排程，將帳號、絕對路徑與必要腳本參數換成實際值：
+排程裝在 root 的 crontab（先 `sudo -i` 切換成 root）；保留原有排程，腳本路徑為 vpcuser 的工作目錄，必要腳本參數換成實際值：
 
 ```cron
-0 2 * * * /bin/bash /home/ACCOUNT/clm-workshop/cert-rotate.sh >> /home/ACCOUNT/clm-workshop/cron.log 2>&1
+0 2 * * * /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh >> /home/vpcuser/clm-workshop/cron.log 2>&1
 ```
 
 Token 由腳本讀取受限本機檔案，不放在 cron 指令或日誌。課堂手動測試同一命令，不必等到凌晨。
