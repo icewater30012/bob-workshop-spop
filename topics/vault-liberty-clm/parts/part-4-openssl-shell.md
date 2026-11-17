@@ -336,7 +336,7 @@ sudo crontab -l
 ## 延伸練習（不計入 60 分鐘）
 
 - 以錯誤憑證路徑測試失敗保護，確認不覆蓋線上 keystore；進一步練習部署失敗後還原。
-- AGENTS.md、Slash Command、可重用 Skill 與 Frontend Slides 簡報。
+- AGENTS.md、Slash Command、可重用 Skill 。
 
 ## Cheatsheet：實作流程與檢查點
 

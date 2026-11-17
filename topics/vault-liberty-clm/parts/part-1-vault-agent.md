@@ -357,7 +357,7 @@ PKI leaf 輪換是重新簽發；AppRole Token renewal 是另一件事。短 TTL
 ## 延伸練習（不計入 60 分鐘）
 
 - 使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。
-- 完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。
+- 完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill與多台部署。
 
 ## Cheatsheet：實作流程與檢查點
 

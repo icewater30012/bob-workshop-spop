@@ -199,6 +199,6 @@ diff -u before.txt after.txt || true</code></pre>
 <h2>60 分鐘內的完成標準</h2>
 <ol><li>HTTPS 已由預設憑證換成本次憑證，CA 信任、IP SAN 與憑證指紋驗證通過，且序號與換證前（<code>before.txt</code>）不同。</li><li>Agent 自動觸發至少一次重新簽發與部署，日誌及線上序號吻合。</li><li>留下程式／設定、部署後憑證資訊（附換證前後序號）與簡短交接，不含秘密。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>
 <h2>延伸練習（不計入 60 分鐘）</h2>
-<ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill、Frontend Slides 簡報與多台部署。</li></ul>
+<ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
 <div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>舊憑證序號（record_baseline 輸出）。</td></tr><tr><td>05–17 分</td><td>完成 Agent 設定</td><td>可啟動的 HCL 與 template。</td></tr><tr><td>17–32 分</td><td>補完部署 hook</td><td>語法通過的 deploy-hook.sh。</td></tr><tr><td>32–45 分</td><td>觀察自動輪換</td><td>至少一次無人工執行 hook 的線上序號變更。</td></tr><tr><td>45–55 分</td><td>核對自動輪換結果</td><td>自動簽發／部署紀錄與線上序號一致。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄與測試程序清理。</td></tr></table></div></main></body></html>

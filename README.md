@@ -11,9 +11,11 @@
 - 用 Bob 理解 TLS 憑證生命週期：申請 → 部署 → 監控 → 輪換。
 - 使用 Vault PKI，或自行建立 OpenSSL 測試 CA 並簽發憑證。
 - 用 Bob 產生 Agent 設定、Shell 或 Ansible，自動部署至 Liberty。
-- 驗證線上憑證、重複執行結果，並確認重複執行結果。
+- 驗證線上憑證，並確認重複執行結果。
 
-**延伸練習：** 用 Bob 建立完整 PKI、AGENTS.md、`/check-cert` Slash Command、可重用 Skill，以及 Frontend Slides 成果簡報。 Cheat sheet 參考：[Bob Cheat Sheet](https://owhc.github.io/bob-cheatsheet/bob-lite-ver.html)
+**延伸練習：** 用 Bob 建立完整 PKI、AGENTS.md、`/check-cert` Slash Command、可重用 Skill。
+
+**成果簡報：** 統整報告員用 Frontend Slides Skill 製作，安裝與使用步驟見下方〈統整報告員〉。
 
 ## 實作環境與各組分配
 
@@ -61,10 +63,78 @@ ssh liberty1   # 第 1 組；其他組改用自己的編號
 |---|---|---|
 | 🔐 Vault 與憑證管理 | 1～2 人 | 申請憑證、檢查 SAN／效期／信任鏈，交付憑證與設定檔位置 |
 | 🤖 自動化／Liberty／維運 | 2～3 人 | 完成部署、線上驗證與重跑檢查，交付執行結果 |
-| 📑 統整報告員 | 1 人 | 記錄架構、前後憑證序號與修復方式，整理交接；簡報為延伸 |
+| 📑 統整報告員（Presenter） | 1 人 | 記錄架構、前後憑證序號與修復方式，整理交接；用 Frontend Slides Skill 產生成果簡報（安裝步驟見[下方](#統整報告員用-frontend-slides-做成果簡報)） |
 
 由一位操作員負責部署，避免同時修改 keystore；共用 Vault 設定由講師管理。Token、私鑰與密碼不要貼進 Bob 對話。
 
+
+## 統整報告員：用 Frontend Slides 做成果簡報
+
+統整報告員（Presenter）要在課程結束前，用 **Frontend Slides Skill** 讓 Bob 產生一份 HTML 成果簡報（單一檔案，瀏覽器直接開啟）。Skill 檔案放在本 repo 的 [`skills/frontend-slides/`](https://github.com/icewater30012/bob-workshop-spop/tree/dev/skills/frontend-slides)。
+
+### 1. 安裝 Skill（約 3 分鐘，在學員電腦做，不是 Liberty VM）
+
+Bob 會從 `~/.bob/skills/`（全域）或專案的 `.bob/skills/` 載入 Skill；每個 Skill 是一個資料夾，裡面要有 `SKILL.md`。
+
+**macOS／Linux：**
+
+```bash
+git clone -b dev https://github.com/icewater30012/bob-workshop-spop.git
+mkdir -p ~/.bob/skills
+cp -R bob-workshop-spop/skills/frontend-slides ~/.bob/skills/
+ls ~/.bob/skills/frontend-slides   # 應看到 SKILL.md、STYLE_PRESETS.md、viewport-base.css 等
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+git clone -b dev https://github.com/icewater30012/bob-workshop-spop.git
+New-Item -ItemType Directory -Force "$HOME\.bob\skills" | Out-Null
+Copy-Item -Recurse bob-workshop-spop\skills\frontend-slides "$HOME\.bob\skills\"
+dir "$HOME\.bob\skills\frontend-slides"
+```
+
+沒有 `git` 或連不到 GitHub：向講師索取 `frontend-slides` 資料夾，整個放進 `~/.bob/skills/` 即可。
+
+### 2. 確認 Bob 已載入
+
+1. 重新開啟 Bob 的聊天視窗（必要時重啟 Bob IDE），切到 **Agent mode**。
+2. 在聊天輸入框打 `/`，選單中應出現 `frontend-slides`；或到 **Bob Settings → Skills** 查看是否在清單中。
+3. 看不到時，確認路徑是 `~/.bob/skills/frontend-slides/SKILL.md`（不要多一層資料夾）。
+
+### 3. 蒐集簡報素材
+
+在學員電腦的專案資料夾建立 `slides/`，把素材放進去（**不要放 Token、私鑰、密碼**）：
+
+```bash
+mkdir -p slides && cd slides
+scp liberty1:~/clm-workshop/before.txt .   # 第 1 組；其他組換編號
+scp liberty1:~/clm-workshop/after.txt .
+```
+
+另外準備：AdminCenter 憑證畫面的截圖（換證前後各一張）、本組選的 Part、遇到的問題與解法。
+
+### 4. 讓 Bob 產生簡報
+
+在 Bob 聊天輸入下面的提示（把括號內換成本組資訊）：
+
+```text
+/frontend-slides
+請為我們組做 5 分鐘的成果簡報，約 6～8 張，內容依序：
+1. 我們選的路線（Part N）與架構。
+2. 換證前後的憑證序號與到期日（讀取 slides/before.txt、slides/after.txt）。
+3. 驗證方式與結果（check_cert、AdminCenter 瀏覽器畫面，截圖放在 slides/）。
+4. 遇到的問題與解法。
+5. 後續維運建議（Token 到期、cron 排程）。
+風格偏專業、清楚；產出單一 HTML 檔放在 slides/。
+```
+
+Skill 會先問長度、風格等問題，並產生 3 個風格預覽讓你挑選，再產出完整簡報；完成後用瀏覽器開啟，方向鍵翻頁。
+
+### 5. 注意事項
+
+- 簡報裡**不要出現** Vault Token、Secret ID、私鑰或密碼；截圖前先確認畫面沒有這些資訊。
+- Skill 的「部署到 Vercel」與「匯出 PDF」是選用功能，不需要完成；課堂以瀏覽器直接簡報即可。
 
 ## 選擇組合
 
