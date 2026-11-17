@@ -37,7 +37,8 @@ Bob 在學員電腦使用；Vault Agent、Shell 或 Ansible 在該組 Liberty VM
 |---|---|
 | 作業系統 | RHEL 9.6 |
 | Java | OpenJDK 21.0.13 |
-| Liberty | `/opt/ibm/wlp`；Server：`defaultServer`；HTTPS：9443 |
+| Liberty | `/opt/ibm/wlp`；Server：`defaultServer`；HTTPS：9443；已啟用 HTTPS，預設為自簽 `localhost` 憑證 |
+| 登入帳號與權限 | `vpcuser`，可免密碼 `sudo`；Liberty 以 root 執行，`server.xml` 與 keystore 為 root 所有，修改與重啟需用 `sudo` |
 | Liberty AdminCenter | `https://<IP>:9443/adminCenter/`（`<IP>` 換成自己 Liberty VM 的 IP）；帳號／密碼：`admin`／`admin123456` |
 | Vault Server | 位於 `vault` VM，API Port：8200；Web UI：[https://128.168.136.176:8200/ui](https://128.168.136.176:8200/ui)；帳號／密碼：`admin`／`admin123456` |
 | 預裝工具 | OpenSSL、keytool、curl、Vault CLI、Ansible、Python 3；Agent 路線使用 Vault Agent |
