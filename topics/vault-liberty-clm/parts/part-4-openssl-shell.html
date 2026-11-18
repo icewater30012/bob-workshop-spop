@@ -90,6 +90,7 @@ check_cert() (
 <ul><li><code>record_baseline</code> 無法取得憑證：先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。</li><li><code>check_cert</code> 失敗：查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</li></ul>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（檢查 HTTPS／keystore、記錄預設憑證序號）｜<strong>協作：</strong> 🔐 憑證管理者（釐清自簽憑證與效期）、📑 統整報告員（記錄舊序號與架構）</blockquote>
 <p>先用 Bob 釐清自簽憑證與換證流程，再檢查這台 VM 的 HTTPS／keystore 設定，記錄預設憑證的序號。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
@@ -110,6 +111,7 @@ check_cert() (
 record_baseline</code></pre>
 <p><strong>檢查點：</strong> 理解自簽流程，取得本組 HTTPS／keystore 現況與檔案路徑。</p>
 <h3>2. 產生伺服器憑證｜10 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🔐 憑證管理者（產生伺服器自簽憑證、驗證簽章與私鑰配對）</blockquote>
 <p>讓 Bob 直接產生私鑰與帶 IP SAN 的伺服器自簽憑證；效期自行選擇，驗證自簽簽章與私鑰配對。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請產生 issue-cert.sh，需求如下：
@@ -125,6 +127,7 @@ chmod 700 ./issue-cert.sh
 # 請 Bob 依實際輸出目錄提供 自簽簽章、IP SAN 與私鑰配對驗證命令</code></pre>
 <p><strong>檢查點：</strong> 通過驗證的 server.crt 與 server.key。</p>
 <h3>3. 建立換證腳本｜17 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（到期判斷、轉 PKCS12、備份、替換、重啟與還原）｜<strong>協作：</strong> 🔐 憑證管理者（確認輪換門檻小於效期）</blockquote>
 <p>整合到期判斷、PKCS12 轉換、備份與部署，避免只有單次產生憑證就結束。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請建立 cert-rotate.sh，需求如下：
@@ -142,6 +145,7 @@ chmod 700 ./cert-rotate.sh</code></pre>
 <div class="table-wrap"><table><tr><th>設定</th><th>用途</th><th>本課怎麼用</th></tr><tr><td>互斥鎖</td><td>排程與手動換證撞在一起時，只讓一份腳本執行，避免同時覆蓋檔案或重啟</td><td>用同一個 <code>flock</code> 鎖保護整段換證流程</td></tr><tr><td>原子替換</td><td>先把新 PKCS12 完整產生並驗證，再一次切換檔名，避免 Liberty 讀到寫了一半的檔案</td><td>暫存檔放在目標檔案同一個檔案系統；它不等於免重啟或自動 rollback</td></tr><tr><td><code>FORCE=true</code></td><td>暫時略過「未到輪換門檻就 skip」的判斷，方便課堂測試</td><td>只用在 <code>cert-rotate.sh</code> 的手動測試；一般執行與 cron 不加，且仍須做完整驗證</td></tr></table></div>
 <p><code>FORCE</code> 是本課要求 Bob 寫進腳本的自訂環境變數，不是 Shell 或 OpenSSL 內建功能；<code>FORCE=true ./cert-rotate.sh</code> 只對這一次執行生效。本課第一次換掉未到期的預設憑證時需要它；產生憑證的 <code>issue-cert.sh</code> 不需要。</p>
 <h3>4. 實測與排程｜13 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（<code>FORCE=true</code> 換證、確認 skip、安裝 cron）</blockquote>
 <p>預設憑證尚未到期，所以第一次要用 <code>FORCE=true</code> 換掉它；完成後一般重跑應 skip，並加入每日 02:00 排程。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請產生 cron 排程（每日 02:00）：
@@ -162,6 +166,7 @@ crontab -l
 exit   # 回到 vpcuser</code></pre>
 <p><strong>檢查點：</strong> 線上新序號、skip 與 cron 設定。</p>
 <h3>5. 驗證排程執行環境｜10 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（以 cron 的精簡環境驗證腳本）</blockquote>
 <p>確認腳本在 cron 的精簡環境下仍可執行，檢查日誌與 skip 結果。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請檢查 cert-rotate.sh 能否在 cron 的精簡環境執行：
@@ -179,6 +184,7 @@ echo &quot;exit code: $?&quot;
 check_cert</code></pre>
 <p><strong>檢查點：</strong> 精簡環境執行成功，未到期時 skip，線上服務正常。</p>
 <h3>6. 成果交付｜5 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 📑 統整報告員（整理交接）｜<strong>協作：</strong> 🔐 憑證管理者、🤖 AP／維運（提供腳本與驗證結果）</blockquote>
 <p>提交簽發腳本、輪換腳本、排程與部署後憑證資訊（附換證前後序號）。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請根據實測整理五行交接，包含換證條件、憑證與私鑰位置、PKCS12 路徑、驗證及恢復方式。</code></pre>
@@ -197,4 +203,4 @@ sudo crontab -l</code></pre>
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>以錯誤憑證路徑測試失敗保護，確認不覆蓋線上 keystore；進一步練習部署失敗後還原。</li><li>AGENTS.md、Slash Command、可重用 Skill 。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
-<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>找出憑證／keystore 路徑，記錄預設憑證序號</td></tr><tr><td>05–15 分</td><td>產生憑證</td><td>自簽簽章、IP SAN 與私鑰配對正確</td></tr><tr><td>15–32 分</td><td>建立換證腳本</td><td>語法通過，具到期判斷及備份</td></tr><tr><td>32–45 分</td><td>實測與排程</td><td>序號變更、重跑 skip、cron 已設定</td></tr><tr><td>45–55 分</td><td>驗證排程環境</td><td>精簡環境執行成功，服務正常</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>腳本、排程與部署後憑證資訊（附換證前後序號）齊全</td></tr></table></div></main></body></html>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>主責</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>🤖 AP／維運</td><td>找出憑證／keystore 路徑，記錄預設憑證序號</td></tr><tr><td>05–15 分</td><td>產生憑證</td><td>🔐 憑證管理者</td><td>自簽簽章、IP SAN 與私鑰配對正確</td></tr><tr><td>15–32 分</td><td>建立換證腳本</td><td>🤖 AP／維運</td><td>語法通過，具到期判斷及備份</td></tr><tr><td>32–45 分</td><td>實測與排程</td><td>🤖 AP／維運</td><td>序號變更、重跑 skip、cron 已設定</td></tr><tr><td>45–55 分</td><td>驗證排程環境</td><td>🤖 AP／維運</td><td>精簡環境執行成功，服務正常</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>📑 統整報告員</td><td>腳本、排程與部署後憑證資訊（附換證前後序號）齊全</td></tr></table></div></main></body></html>

@@ -187,6 +187,8 @@ role `liberty-server` 已設定 `allow_ip_sans=true`、`require_cn=false`，簽�
 
 ### 1. 辨識現況｜5 分鐘
 
+> **主責角色：** 🤖 AP／維運（檢查 HTTPS／keystore、記錄預設憑證序號）｜**協作：** 🔐 憑證管理者（確認連得到 Vault）、📑 統整報告員（記錄舊序號與架構）
+
 檢查 HTTPS／keystore 設定，記錄預設憑證的序號，並確認連得到 Vault。確認 Agent 尚未執行。
 
 **給 Bob 的提示：**
@@ -214,6 +216,8 @@ record_baseline
 **檢查點：** 取得舊憑證序號（`record_baseline` 輸出）。
 
 ### 2. 完成 Agent 設定｜12 分鐘
+
+> **主責角色：** 🔐 憑證管理者（建立 AppRole、設定 Agent 的 pkiCert template）
 
 分兩段：2a 用你的 Vault Token 建立本組 AppRole（policy 只需 PKI 簽發權限），Role ID、Secret ID 存成 0600 檔案；2b 請 Bob 產生 auto-auth 與 template 設定。
 
@@ -244,6 +248,8 @@ vault agent -help
 
 ### 3. 補完部署 hook｜15 分鐘
 
+> **主責角色：** 🤖 AP／維運（拆 bundle、轉 PKCS12、替換 keystore、重啟 Liberty、失敗還原）
+
 由 Bob 補齊 bundle 拆分、PKCS12 轉換及部署驗證，沿用已確認的 Liberty 控制方式。
 
 **給 Bob 的提示：**
@@ -272,6 +278,8 @@ chmod 700 ./deploy-hook.sh
 
 ### 4. 觀察自動輪換｜13 分鐘
 
+> **主責角色：** 🔐 憑證管理者（啟動 Agent、指定 `ttl=3m`、確認重新簽發）｜**協作：** 🤖 AP／維運（用 `check_cert` 觀察線上序號）
+
 啟動 Agent，在 template 的 pkiCert 指定 `ttl=3m`（role 上限 168 小時，3 分鐘可行），持續觀察約兩個週期及線上憑證序號。
 
 **給 Bob 的提示：**
@@ -297,6 +305,8 @@ vault agent -config=./liberty-agent.hcl 2>&1 | tee logs/agent.log
 
 ### 5. 核對自動輪換結果｜10 分鐘
 
+> **主責角色：** 🤖 AP／維運（比對日誌、bundle 與線上序號）｜**協作：** 🔐 憑證管理者（確認簽發紀錄）
+
 比對 Agent log、bundle 與線上憑證，確認至少一次由 Agent 自動觸發的重新簽發及部署。
 
 **給 Bob 的提示：**
@@ -321,6 +331,8 @@ diff -u before.txt after.txt || true
 **檢查點：** 自動簽發／部署紀錄與線上序號一致。
 
 ### 6. 成果交付｜5 分鐘
+
+> **主責角色：** 📑 統整報告員（整理交接）｜**協作：** 🔐 憑證管理者、🤖 AP／維運（提供設定與驗證結果）
 
 停止短 TTL 測試 Agent（或把 template 的 `ttl` 改回 `1h`），提交設定、hook 與部署後憑證資訊（附換證前後序號）。
 
@@ -361,11 +373,11 @@ PKI leaf 輪換是重新簽發；AppRole Token renewal 是另一件事。短 TTL
 
 ## Cheatsheet：實作流程與檢查點
 
-| 時間 | 工作 | 檢查點 |
-|---|---|---|
-| 00–05 分 | 辨識現況 | 舊憑證序號（record_baseline 輸出）。 |
-| 05–17 分 | 完成 Agent 設定 | 可啟動的 HCL 與 template。 |
-| 17–32 分 | 補完部署 hook | 語法通過的 deploy-hook.sh。 |
-| 32–45 分 | 觀察自動輪換 | 至少一次無人工執行 hook 的線上序號變更。 |
-| 45–55 分 | 核對自動輪換結果 | 自動簽發／部署紀錄與線上序號一致。 |
-| 55–60 分 | 成果交付 | 交接紀錄與測試程序清理。 |
+| 時間 | 工作 | 主責 | 檢查點 |
+|---|---|---|---|
+| 00–05 分 | 辨識現況 | 🤖 AP／維運 | 舊憑證序號（record_baseline 輸出）。 |
+| 05–17 分 | 完成 Agent 設定 | 🔐 憑證管理者 | 可啟動的 HCL 與 template。 |
+| 17–32 分 | 補完部署 hook | 🤖 AP／維運 | 語法通過的 deploy-hook.sh。 |
+| 32–45 分 | 觀察自動輪換 | 🔐 憑證管理者＋🤖 AP／維運 | 至少一次無人工執行 hook 的線上序號變更。 |
+| 45–55 分 | 核對自動輪換結果 | 🤖 AP／維運 | 自動簽發／部署紀錄與線上序號一致。 |
+| 55–60 分 | 成果交付 | 📑 統整報告員 | 交接紀錄與測試程序清理。 |

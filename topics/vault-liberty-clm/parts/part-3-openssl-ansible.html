@@ -99,6 +99,7 @@ check_cert() (
 <ul><li><code>record_baseline</code> 無法取得憑證：先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。</li><li><code>check_cert</code> 失敗：查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</li></ul>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（確認 Ansible 與 inventory、記錄預設憑證序號）｜<strong>協作：</strong> 📑 統整報告員（記錄舊序號與架構）</blockquote>
 <p>確認 Ansible 可用，檢查是否已有 HTTPS 與憑證，請 Bob 依實際環境建立 inventory 與變數檔。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
@@ -118,6 +119,7 @@ ansible -i inventory all -m ansible.builtin.ping
 record_baseline</code></pre>
 <p><strong>檢查點：</strong> 基準資訊與連線確認。</p>
 <h3>2. 建立簽發任務｜10 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🔐 憑證管理者（建立測試 CA、簽發帶 IP SAN 的伺服器憑證）</blockquote>
 <p>用 Bob 建立測試 CA，再完成 server key、CSR、IP SAN 與簽發任務；CA 只在不存在時建立。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請產生單一 playbook.yml，需求如下：
@@ -132,6 +134,7 @@ record_baseline</code></pre>
 # 請 Bob 補完單一 Playbook 後再執行，語法檢查不會簽發憑證</code></pre>
 <p><strong>檢查點：</strong> 可簽發且有 SAN 的憑證，CA 與 leaf 驗證通過（<code>openssl verify -CAfile ca.crt server.crt</code>）。</p>
 <h3>3. 完成部署與恢復｜17 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（條件判斷、備份、PKCS12、重啟與 block/rescue 還原）</blockquote>
 <p>補上條件判斷、備份、PKCS12、受控重啟與 block/rescue。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請補完 playbook.yml：
@@ -145,6 +148,7 @@ record_baseline</code></pre>
 # 檢視 block/rescue、服務重啟與驗證順序</code></pre>
 <p><strong>檢查點：</strong> 完整單檔 Playbook。</p>
 <h3>4. 執行與重跑｜13 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（執行 Playbook：強制輪換與一般重跑）｜<strong>協作：</strong> 🔐 憑證管理者（確認新憑證序號與 SAN）</blockquote>
 <p>執行 syntax-check、強制輪換及一般重跑，確認第一次成功部署本次憑證、第二次略過。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請提供以下命令，並簡述用途：
@@ -159,6 +163,7 @@ ansible-playbook -i inventory playbook.yml
 # 第二次應略過簽發／替換／重啟相關任務</code></pre>
 <p><strong>檢查點：</strong> Play recap、序號變更與 skip。</p>
 <h3>5. 檢查重複執行結果｜10 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（比對 Play recap，確認不重複換證或重啟）｜<strong>協作：</strong> 🔐 憑證管理者（確認憑證序號不變）</blockquote>
 <p>比較強制輪換與一般執行的 Play recap，確認不需換證時不會重新簽發或重啟 Liberty。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請比較兩次執行的 tasks 與 changed／skipped 結果：
@@ -172,6 +177,7 @@ check_cert | tee rerun-after.txt
 diff -u rerun-before.txt rerun-after.txt</code></pre>
 <p><strong>檢查點：</strong> 一般重跑不換證、不重啟，線上序號不變。</p>
 <h3>6. 成果交付｜5 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 📑 統整報告員（整理交接）｜<strong>協作：</strong> 🔐 憑證管理者、🤖 AP／維運（提供 Playbook 與驗證結果）</blockquote>
 <p>提交 inventory、變數範本、Playbook 與驗證紀錄。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請整理五行交接並說明擴成多台時需要增加哪些 inventory 與逐台驗證控制，不要在本次實作展開。</code></pre>
@@ -186,4 +192,4 @@ diff -u before.txt after.txt || true
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>進階 CA 階層建置、AGENTS.md、Slash Command、可重用 Skill與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
-<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>基準資訊與連線確認。</td></tr><tr><td>05–15 分</td><td>建立簽發任務</td><td>可簽發且有 SAN 的憑證。</td></tr><tr><td>15–32 分</td><td>完成部署與恢復</td><td>完整單檔 Playbook。</td></tr><tr><td>32–45 分</td><td>執行與重跑</td><td>Play recap、序號變更與 skip。</td></tr><tr><td>45–55 分</td><td>檢查重複執行結果</td><td>一般重跑不換證、不重啟，線上序號不變。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄。</td></tr></table></div></main></body></html>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>主責</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>🤖 AP／維運</td><td>基準資訊與連線確認。</td></tr><tr><td>05–15 分</td><td>建立簽發任務</td><td>🔐 憑證管理者</td><td>可簽發且有 SAN 的憑證。</td></tr><tr><td>15–32 分</td><td>完成部署與恢復</td><td>🤖 AP／維運</td><td>完整單檔 Playbook。</td></tr><tr><td>32–45 分</td><td>執行與重跑</td><td>🤖 AP／維運</td><td>Play recap、序號變更與 skip。</td></tr><tr><td>45–55 分</td><td>檢查重複執行結果</td><td>🤖 AP／維運</td><td>一般重跑不換證、不重啟，線上序號不變。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>📑 統整報告員</td><td>交接紀錄。</td></tr></table></div></main></body></html>

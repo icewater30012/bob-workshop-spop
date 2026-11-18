@@ -104,6 +104,7 @@ check_cert() (
 <p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（檢查 HTTPS／keystore、記錄預設憑證序號）｜<strong>協作：</strong> 🔐 憑證管理者（確認連得到 Vault）、📑 統整報告員（記錄舊序號與架構）</blockquote>
 <p>檢查 HTTPS／keystore 設定，記錄預設憑證的序號，並確認連得到 Vault。確認 Agent 尚未執行。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">我是 SP／OP 人員，請先簡要解釋：
@@ -121,6 +122,7 @@ vault status   # 確認連得到 Vault；若報 certificate 錯誤，先 source 
 record_baseline</code></pre>
 <p><strong>檢查點：</strong> 取得舊憑證序號（<code>record_baseline</code> 輸出）。</p>
 <h3>2. 完成 Agent 設定｜12 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🔐 憑證管理者（建立 AppRole、設定 Agent 的 pkiCert template）</blockquote>
 <p>分兩段：2a 用你的 Vault Token 建立本組 AppRole（policy 只需 PKI 簽發權限），Role ID、Secret ID 存成 0600 檔案；2b 請 Bob 產生 auto-auth 與 template 設定。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">【2a 建立 AppRole】
@@ -139,6 +141,7 @@ record_baseline</code></pre>
 # 不要用 cat 回顯 role-id／secret-id 等秘密檔案</code></pre>
 <p><strong>檢查點：</strong> 可啟動的 HCL 與 template。</p>
 <h3>3. 補完部署 hook｜15 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（拆 bundle、轉 PKCS12、替換 keystore、重啟 Liberty、失敗還原）</blockquote>
 <p>由 Bob 補齊 bundle 拆分、PKCS12 轉換及部署驗證，沿用已確認的 Liberty 控制方式。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請產生 deploy-hook.sh，需求如下：
@@ -156,6 +159,7 @@ chmod 700 ./deploy-hook.sh
 # hook 由 Agent 成功渲染後觸發，勿在 bundle 尚未產生前執行</code></pre>
 <p><strong>檢查點：</strong> 語法通過的 deploy-hook.sh（首次部署會在步驟 4 啟動 Agent 時發生）。</p>
 <h3>4. 觀察自動輪換｜13 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🔐 憑證管理者（啟動 Agent、指定 <code>ttl=3m</code>、確認重新簽發）｜<strong>協作：</strong> 🤖 AP／維運（用 <code>check_cert</code> 觀察線上序號）</blockquote>
 <p>啟動 Agent，在 template 的 pkiCert 指定 <code>ttl=3m</code>（role 上限 168 小時，3 分鐘可行），持續觀察約兩個週期及線上憑證序號。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請檢查 Agent log、template 與 hook 執行紀錄，並：
@@ -170,6 +174,7 @@ vault agent -config=./liberty-agent.hcl 2&gt;&amp;1 | tee logs/agent.log
 # 每隔約 30 秒呼叫 check_cert，記錄序號變更</code></pre>
 <p><strong>檢查點：</strong> 至少一次無人工執行 hook 的線上序號變更。</p>
 <h3>5. 核對自動輪換結果｜10 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 🤖 AP／維運（比對日誌、bundle 與線上序號）｜<strong>協作：</strong> 🔐 憑證管理者（確認簽發紀錄）</blockquote>
 <p>比對 Agent log、bundle 與線上憑證，確認至少一次由 Agent 自動觸發的重新簽發及部署。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請比對 Agent／hook 日誌、bundle 憑證序號與線上序號：
@@ -184,6 +189,7 @@ tail -n 50 logs/agent.log
 diff -u before.txt after.txt || true</code></pre>
 <p><strong>檢查點：</strong> 自動簽發／部署紀錄與線上序號一致。</p>
 <h3>6. 成果交付｜5 分鐘</h3>
+<blockquote><strong>主責角色：</strong> 📑 統整報告員（整理交接）｜<strong>協作：</strong> 🔐 憑證管理者、🤖 AP／維運（提供設定與驗證結果）</blockquote>
 <p>停止短 TTL 測試 Agent（或把 template 的 <code>ttl</code> 改回 <code>1h</code>），提交設定、hook 與部署後憑證資訊（附換證前後序號）。</p>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請依實際紀錄整理五行交接：架構、觸發條件、驗證方式、失敗保護及未完成事項。</code></pre>
@@ -201,4 +207,4 @@ diff -u before.txt after.txt || true</code></pre>
 <h2>延伸練習（不計入 60 分鐘）</h2>
 <ul><li>使用測試複本或變數觸發錯誤，驗證失敗保護與部署失敗後還原。</li><li>完整 CA 建置、AGENTS.md、Slash Command、可重用 Skill與多台部署。</li></ul>
 <h2>Cheatsheet：實作流程與檢查點</h2>
-<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>舊憑證序號（record_baseline 輸出）。</td></tr><tr><td>05–17 分</td><td>完成 Agent 設定</td><td>可啟動的 HCL 與 template。</td></tr><tr><td>17–32 分</td><td>補完部署 hook</td><td>語法通過的 deploy-hook.sh。</td></tr><tr><td>32–45 分</td><td>觀察自動輪換</td><td>至少一次無人工執行 hook 的線上序號變更。</td></tr><tr><td>45–55 分</td><td>核對自動輪換結果</td><td>自動簽發／部署紀錄與線上序號一致。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>交接紀錄與測試程序清理。</td></tr></table></div></main></body></html>
+<div class="table-wrap"><table><tr><th>時間</th><th>工作</th><th>主責</th><th>檢查點</th></tr><tr><td>00–05 分</td><td>辨識現況</td><td>🤖 AP／維運</td><td>舊憑證序號（record_baseline 輸出）。</td></tr><tr><td>05–17 分</td><td>完成 Agent 設定</td><td>🔐 憑證管理者</td><td>可啟動的 HCL 與 template。</td></tr><tr><td>17–32 分</td><td>補完部署 hook</td><td>🤖 AP／維運</td><td>語法通過的 deploy-hook.sh。</td></tr><tr><td>32–45 分</td><td>觀察自動輪換</td><td>🔐 憑證管理者＋🤖 AP／維運</td><td>至少一次無人工執行 hook 的線上序號變更。</td></tr><tr><td>45–55 分</td><td>核對自動輪換結果</td><td>🤖 AP／維運</td><td>自動簽發／部署紀錄與線上序號一致。</td></tr><tr><td>55–60 分</td><td>成果交付</td><td>📑 統整報告員</td><td>交接紀錄與測試程序清理。</td></tr></table></div></main></body></html>
