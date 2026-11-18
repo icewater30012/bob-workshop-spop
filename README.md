@@ -1,6 +1,6 @@
 # IBM Bob workshop
 
-**SP／OP：Liberty 憑證自動化｜每組選一條路線｜60 分鐘**
+**SP／OP：Liberty 憑證自動化｜四個獨立情境，每組選一個｜60 分鐘**
 
 [開啟分頁式教材 →](topics/vault-liberty-clm/index.html)
 
@@ -33,7 +33,7 @@
 | `liberty7` | 第 7 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty7` |
 | `liberty8` | 第 8 組專用 Liberty | RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟 | `ssh liberty8` |
 
-Bob 在學員電腦使用；Vault Agent、Shell 或 Ansible 在該組 Liberty VM 執行。OpenSSL 路線不使用 Vault。
+Bob 在學員電腦使用；Vault Agent、Shell 或 Ansible 在該組 Liberty VM 執行。OpenSSL 情境不使用 Vault。
 
 | 軟體與位置 | 說明 |
 |---|---|
@@ -43,7 +43,7 @@ Bob 在學員電腦使用；Vault Agent、Shell 或 Ansible 在該組 Liberty VM
 | 登入帳號與權限 | `vpcuser`，可免密碼 `sudo`；Liberty 以 root 執行，`server.xml` 與 keystore 為 root 所有，修改與重啟需用 `sudo` |
 | Liberty AdminCenter | `https://<IP>:9443/adminCenter/`（`<IP>` 換成自己 Liberty VM 的 IP）；帳號／密碼：`admin`／`admin123456` |
 | Vault Server | 位於 `vault` VM，API Port：8200；Web UI：[https://128.168.136.176:8200/ui](https://128.168.136.176:8200/ui)；帳號／密碼：`admin`／`admin123456` |
-| 預裝工具 | OpenSSL、keytool、curl、Vault CLI、Ansible、Python 3；Agent 路線使用 Vault Agent |
+| 預裝工具 | OpenSSL、keytool、curl、Vault CLI、Ansible、Python 3；Agent 情境使用 Vault Agent |
 
 ### 如何連線
 
@@ -53,7 +53,7 @@ IP、帳號與 SSH key 已匯入 Bob 的 SSH config。在 **Bob IDE Terminal** �
 ssh liberty1   # 第 1 組；其他組改用自己的編號
 ```
 
-需要登入共用 Vault 時，在學員電腦的另一個 Terminal 執行 `ssh vault`。輸入 `exit` 離開遠端主機。Vault API 位址與憑證路徑依各 Part 步驟確認。
+需要登入共用 Vault 時，在學員電腦的另一個 Terminal 執行 `ssh vault`。輸入 `exit` 離開遠端主機。Vault API 位址與憑證路徑依各 Scenario 步驟確認。
 
 ## 組內角色分工
 
@@ -112,7 +112,7 @@ scp liberty1:~/clm-workshop/before.txt .   # 第 1 組；其他組換編號
 scp liberty1:~/clm-workshop/after.txt .
 ```
 
-另外準備：AdminCenter 憑證畫面的截圖（換證前後各一張）、本組選的 Part、遇到的問題與解法。
+另外準備：AdminCenter 憑證畫面的截圖（換證前後各一張）、本組選的 Scenario、遇到的問題與解法。
 
 ### 4. 讓 Bob 產生簡報
 
@@ -121,7 +121,7 @@ scp liberty1:~/clm-workshop/after.txt .
 ```text
 /frontend-slides
 請為我們組做 5 分鐘的成果簡報，約 6～8 張，內容依序：
-1. 我們選的路線（Part N）與架構。
+1. 我們選的情境（Scenario N）與架構。
 2. 換證前後的憑證序號與到期日（讀取 slides/before.txt、slides/after.txt）。
 3. 驗證方式與結果（check_cert、AdminCenter 瀏覽器畫面，截圖放在 slides/）。
 4. 遇到的問題與解法。
@@ -136,13 +136,13 @@ Skill 會先問長度、風格等問題，並產生 3 個風格預覽讓你挑�
 - 簡報裡**不要出現** Vault Token、Secret ID、私鑰或密碼；截圖前先確認畫面沒有這些資訊。
 - Skill 的「部署到 Vercel」與「匯出 PDF」是選用功能，不需要完成；課堂以瀏覽器直接簡報即可。
 
-## 選擇組合
+## 選擇情境
 
-**四選一，每條路線 60 分鐘。** 星等代表本課相對難度。
+**四個 Scenario 各自獨立、互不相依，沒有先後順序；每組只選一個，60 分鐘完成。** 星等代表本課相對難度。
 
-| 獨立 Part | 難度 | 適合對象 | 時間 |
+| 獨立情境 | 難度 | 適合對象 | 時間 |
 |---|---|---|---|
-| [Part 1：Vault PKI ＋ Vault Agent](topics/vault-liberty-clm/parts/part-1-vault-agent.md) | ⭐⭐⭐⭐ 進階 | 想理解 Vault 持續換證與事件觸發的 SP／OP | 60 分鐘 |
-| [Part 2：Vault PKI ＋ Shell／crontab](topics/vault-liberty-clm/parts/part-2-vault-shell.md) | ⭐⭐ 中階 | 熟悉 Shell、想串接集中式簽發的維運人員 | 60 分鐘 |
-| [Part 3：OpenSSL ＋ Ansible](topics/vault-liberty-clm/parts/part-3-openssl-ansible.md) | ⭐⭐⭐ 中高階 | 有基本 YAML／Ansible 經驗的平台工程師 | 60 分鐘 |
-| [Part 4：OpenSSL ＋ Shell／crontab](topics/vault-liberty-clm/parts/part-4-openssl-shell.md) | ⭐ 入門 | 第一次接觸 CLM、具備基本 Linux 操作經驗者 | 60 分鐘 |
+| [Scenario 1：Vault PKI ＋ Vault Agent](topics/vault-liberty-clm/parts/part-1-vault-agent.md) | ⭐⭐⭐⭐ 進階 | 想理解 Vault 持續換證與事件觸發的 SP／OP | 60 分鐘 |
+| [Scenario 2：Vault PKI ＋ Shell／crontab](topics/vault-liberty-clm/parts/part-2-vault-shell.md) | ⭐⭐ 中階 | 熟悉 Shell、想串接集中式簽發的維運人員 | 60 分鐘 |
+| [Scenario 3：OpenSSL ＋ Ansible](topics/vault-liberty-clm/parts/part-3-openssl-ansible.md) | ⭐⭐⭐ 中高階 | 有基本 YAML／Ansible 經驗的平台工程師 | 60 分鐘 |
+| [Scenario 4：OpenSSL ＋ Shell／crontab](topics/vault-liberty-clm/parts/part-4-openssl-shell.md) | ⭐ 入門 | 第一次接觸 CLM、具備基本 Linux 操作經驗者 | 60 分鐘 |

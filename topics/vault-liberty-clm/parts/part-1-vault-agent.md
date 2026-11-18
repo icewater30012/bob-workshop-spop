@@ -1,6 +1,6 @@
-# Part 1｜Vault PKI ＋ Vault Agent
+# Scenario 1｜Vault PKI ＋ Vault Agent
 
-[← 回組合總覽](../README.md) · [開啟分頁教材](../index.html#part-1)
+[← 回總覽](../README.md) · [開啟分頁教材](../index.html#part-1)
 
 **難度：進階｜總時間：60 分鐘｜適合：想理解 Vault 持續換證與事件觸發的 SP／OP**
 
@@ -82,7 +82,7 @@ AppRole 由你在步驟 2 自行建立（policy 用 `pki-issue`）：Role ID 與
 請先確認實際環境，只讀公開憑證與設定，不顯示私鑰或密碼：
 1. 檢查 Liberty server.xml：HTTPS、port、keystore 設定，以及服務控制方式。
 2. 讀取目前憑證的 SAN。
-3. 列出本路線所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
+3. 列出本情境所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
 
 工作目錄是 ~/clm-workshop；Agent 用 HCL 指定實際路徑，hook 使用明確參數。請依確認結果給完整執行命令。
 ```

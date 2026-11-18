@@ -1,6 +1,6 @@
 # 講師課前準備與控時
 
-[← 組合總覽](README.md)
+[← 回總覽](README.md)
 
 ## 課程邊界
 
@@ -10,7 +10,7 @@
 
 ## 環境與權限
 
-- 沿用一台共用 Vault 與八台各組 Liberty VM 的規劃。OpenSSL 路線不依賴 Vault。
+- 沿用一台共用 Vault 與八台各組 Liberty VM 的規劃。OpenSSL 情境不依賴 Vault。
 - 主機規格：Vault：RHEL 9.6／4 vCPU／16 GB RAM／100 GB 磁碟；每台 Liberty：RHEL 9.6／2 vCPU／8 GB RAM／100 GB 磁碟。SSH 別名為 `vault` 與 `liberty1`～`liberty8`；IP、user、key 已匯入學員 Bob 的 SSH config。
 - 記錄實際 RHEL、JDK、Liberty、Vault、Agent、Ansible 與 OpenSSL 版本，課前確認相容性；不沿用舊教材未驗證的固定版本。
 - Liberty HTTPS 預先啟動，提供可回應成功狀態的測試頁、基準憑證、備份與環境重置程序。
@@ -18,15 +18,15 @@
 - `~/clm-workshop/` 由學員在 Liberty VM 自行建立；教材不預先提供 env.sh 或程式骨架。課前備妥並確認實際 CA_FILE、TLS_HOST（IP）、TLS_PORT、SERVER_NAME、Liberty 路徑、live keystore、服務控制命令、密碼檔位置，學員依步驟向 Bob 確認後使用。
 - Vault 事先建立 Root／Intermediate CA、每組 PKI role 與最小權限認證。每組路徑隔離，不發 Root Token，不讓學員改共用 CA、mount、policy 或 auth method。
 - Vault 已建 PKI：`pki`（Workshop Root CA）→ `pki_int`（Workshop Intermediate CA），role `liberty-server`（IP SAN、無需 CN、TTL 1h／上限 168h），policy `pki-issue`。各 VM 的 `~/clm-workshop/` 已放 `vault-token`、`pki-ca-chain.pem`（Root＋Intermediate，供驗證）、`vault-api-ca.pem`（Vault API 自簽憑證，`VAULT_CACERT` 已寫入 `~/.bashrc`）。
-- Part 1 的 AppRole 由學員自建（policy `pki-issue`）；3 分鐘短 TTL 由學員在 template 指定 `ttl=3m`。
-- Part 2 使用各組獨立、有效一週的 Token（policy `workshop`，可管理 `pki*`、`auth/approle/*`）。
-- OpenSSL 路線由學員自行建立測試 CA，效期與輪換門檻自行決定；後續輪換沿用 CA，私鑰僅留在該組 VM。
-- OpenSSL 路線不固定 leaf 效期；輪換門檻須小於憑證效期。確認自訂 CA、CN 及 SAN 適用 curl 與 s_client 驗證。
-- 課前以同映像、同權限從頭執行各路線。此 repo 目前提供的是教材與提示，並未附上經 VM 實測的程式骨架或參考完成檔；學員以 Bob 自行產出為準。
+- Scenario 1 的 AppRole 由學員自建（policy `pki-issue`）；3 分鐘短 TTL 由學員在 template 指定 `ttl=3m`。
+- Scenario 2 使用各組獨立、有效一週的 Token（policy `workshop`，可管理 `pki*`、`auth/approle/*`）。
+- OpenSSL 情境由學員自行建立測試 CA，效期與輪換門檻自行決定；後續輪換沿用 CA，私鑰僅留在該組 VM。
+- OpenSSL 情境不固定 leaf 效期；輪換門檻須小於憑證效期。確認自訂 CA、CN 及 SAN 適用 curl 與 s_client 驗證。
+- 課前以同映像、同權限從頭執行各情境。此 repo 目前提供的是教材與提示，並未附上經 VM 實測的程式骨架或參考完成檔；學員以 Bob 自行產出為準。
 
 ## 控時與救援
 
-| Part | 現況 | 設定／簽發 | 自動化 | 驗證 | 故障 | 交接 | 合計 |
+| Scenario | 現況 | 設定／簽發 | 自動化 | 驗證 | 故障 | 交接 | 合計 |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | 1：Vault Agent | 5 | 12 | 15 | 13 | 10 | 5 | 60 |
 | 2：Vault Shell | 5 | 10 | 17 | 13 | 10 | 5 | 60 |
@@ -40,7 +40,7 @@
 
 ## 預演驗收
 
-- 每條路線以新學員操作速度實跑一次，記錄總時間與卡點；目標核心操作約 40 分鐘，其餘用於故障及交接。
+- 每個情境以新學員操作速度實跑一次，記錄總時間與卡點；目標核心操作約 40 分鐘，其餘用於故障及交接。
 - 成功路徑：線上序號改變、憑證鏈／SAN 驗證通過，HTTP 測試頁成功。
 - 重跑路徑：Shell／Ansible 不到期時 skip；Agent 自行觸發下一次簽發及部署。
 - 失敗路徑：申請／轉檔失敗不更動 live keystore；部署後驗證失敗可恢復舊檔及 HTTPS。

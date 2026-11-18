@@ -1,6 +1,6 @@
-# Part 3｜OpenSSL ＋ Ansible
+# Scenario 3｜OpenSSL ＋ Ansible
 
-[← 回組合總覽](../README.md) · [開啟分頁教材](../index.html#part-3)
+[← 回總覽](../README.md) · [開啟分頁教材](../index.html#part-3)
 
 **難度：中高階｜總時間：60 分鐘｜適合：有基本 YAML／Ansible 經驗的平台工程師**
 
@@ -59,7 +59,7 @@ openssl version
 請先確認實際環境，只讀公開憑證與設定，不顯示私鑰或密碼：
 1. 檢查 Liberty server.xml：HTTPS、port、keystore 設定，以及服務控制方式。
 2. 讀取目前憑證的 SAN。
-3. 列出本路線所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
+3. 列出本情境所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
 
 工作目錄是 ~/clm-workshop；Ansible 用明確變數指定實際路徑。請依確認結果給完整執行命令。
 ```

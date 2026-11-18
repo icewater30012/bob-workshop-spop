@@ -1,6 +1,6 @@
-# Part 4｜OpenSSL ＋ Shell／crontab
+# Scenario 4｜OpenSSL ＋ Shell／crontab
 
-[← 回組合總覽](../README.md) · [開啟分頁教材](../index.html#part-4)
+[← 回總覽](../README.md) · [開啟分頁教材](../index.html#part-4)
 
 **難度：⭐ 入門｜總時間：60 分鐘**
 
@@ -51,7 +51,7 @@ whoami
 openssl version
 ```
 
-本 Part 直接產生 **伺服器自簽憑證**，由伺服器自己的私鑰簽署，不另外建立 CA 或 CA 憑證。憑證效期與輪換門檻自行決定，門檻需小於效期。
+本情境直接產生 **伺服器自簽憑證**，由伺服器自己的私鑰簽署，不另外建立 CA 或 CA 憑證。憑證效期與輪換門檻自行決定，門檻需小於效期。
 
 ### 部署前確認、部署後驗證
 

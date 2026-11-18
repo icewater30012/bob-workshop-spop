@@ -18,7 +18,7 @@ def gen(n,left,right,lr_arrow,lr_label,vault_label,arrow_dir):
     """n=part number; vault_label None => no Vault"""
     mid=f'arch{n}'; vault=vault_label is not None
     W=1320 if vault else 980; H=560 if vault else 500
-    o=f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="Part {n} 主機部署架構"><defs><marker id="{mid}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3" fill="{BLUE}"/></marker></defs>\n'
+    o=f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="Scenario {n} 主機部署架構"><defs><marker id="{mid}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3" fill="{BLUE}"/></marker></defs>\n'
     # student
     o+='<rect x="20" y="100" width="220" height="%d" rx="14" fill="#f0f5fc" stroke="#99b6d6" stroke-width="2"/>'%(380 if vault else 300)
     o+='<text x="130" y="140" text-anchor="middle" font-size="22" fill="#173e68">學員電腦</text>'
@@ -62,5 +62,5 @@ S={
 4:gen(4,('crontab ＋ Shell 腳本','排程與部署'),('OpenSSL','產生伺服器自簽憑證'),'right','呼叫',None,'right'),
 }
 if __name__=='__main__':
-    html='<!doctype html><meta charset=utf-8><body style="font-family:system-ui;max-width:1100px;margin:auto">'+''.join(f'<h2>Part {n}</h2>{s}' for n,s in S.items())
+    html='<!doctype html><meta charset=utf-8><body style="font-family:system-ui;max-width:1100px;margin:auto">'+''.join(f'<h2>Scenario {n}</h2>{s}' for n,s in S.items())
     Path('preview.html').write_text(html)

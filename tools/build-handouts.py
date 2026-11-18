@@ -58,30 +58,30 @@ for n,p in enumerate(sorted((BASE/'parts').glob('part-*.md')),1):
  svg=svg.replace('學員電腦與 Liberty VM；不需要 Vault Server VM','學員電腦與 Liberty VM')
  svg=re.sub(r'<text\b[^>]*>不需要 Vault Server VM</text>', '', svg)
  md=p.read_text();body=render(md,svg)
- p.with_suffix('.html').write_text(document(f'IBM Bob workshop｜Part {n}',body))
+ p.with_suffix('.html').write_text(document(f'IBM Bob workshop｜Scenario {n}',body))
  embedded=body.replace('href="../README.html"','href="#home"').replace(f'href="../index.html#part-{n}"',f'href="#part-{n}"')
- # Keep the title, architecture and full instructions in the same Part block.
+ # Keep the title, architecture and full instructions in the same Scenario block.
  section=f'<section id="part-{n}" hidden><div class="full-material" id="material-{n}">'+embedded+'</div><!-- full-material-end --></section>'
  s=re.sub(pat,lambda m:section,s,count=1,flags=re.S)
 # Overview order follows Markdown; the choice cards are always last.
-overview=(BASE/'README.md').read_text();info=overview[overview.index('## Workshop 目標'):overview.index('## 選擇組合')]
+overview=(BASE/'README.md').read_text();info=overview[overview.index('## Workshop 目標'):overview.index('## 選擇情境')]
 home=re.search(r'<section id="home">.*?</section>',s,re.S)[0]
 cards=re.search(r'<div class="combos">.*?</div>(?=<div class="overview-info">|</section>|\s*<)',home,re.S)
 # Card grid contains only article elements, so its first closing div ends the grid.
 cards=re.search(r'<div class="combos">.*?</div>',home,re.S)[0]
 for label,stars in [('進階','⭐⭐⭐⭐'),('中高階','⭐⭐⭐'),('中階','⭐⭐'),('入門','⭐')]:
  cards=re.sub(r'(?:⭐+\s*)?'+label+' · 60 分鐘',stars+' '+label+' · 60 分鐘',cards)
-home='<section id="home"><div class="overview-info">'+render(info)+'</div><!-- overview-info-end --><h2>選擇一個組合，完成一條路線</h2><p class="muted">每組四選一，各 60 分鐘。星等為四條路線的相對難度（⭐～⭐⭐⭐⭐）。</p>'+cards+'</section>'
+home='<section id="home"><div class="overview-info">'+render(info)+'</div><!-- overview-info-end --><h2>選擇一個情境，完成一次換證</h2><p class="muted">四個 Scenario 各自獨立、互不相依，每組只選一個，60 分鐘。星等為四個情境的相對難度（⭐～⭐⭐⭐⭐）。</p>'+cards+'</section>'
 s=re.sub(r'<section id="home">.*?</section>',lambda m:home,s,count=1,flags=re.S)
 # Also make footer links browser-readable.
 s=re.sub(r'<a href="INSTRUCTOR\.(md|html)">[^<]*</a>(?: · )?','',s)
 s=s.replace('href="INSTRUCTOR.md"','href="INSTRUCTOR.html"').replace('href="README.md"','href="README.html"').replace('Markdown 總覽','完整總覽')
 s=re.sub(r'<title>.*?</title>','<title>IBM Bob workshop｜SP／OP 憑證自動化</title>',s,count=1)
-# Resolve fragments inside the active Part as well as top-level tabs.
+# Resolve fragments inside the active Scenario as well as top-level tabs.
 s=s.replace("const valid=target&&target.tagName==='SECTION'?id:'home';", "const owner=target&&(target.tagName==='SECTION'?target:target.closest('main>section'));const valid=owner?owner.id:'home';")
 s=s.replace("else a.removeAttribute('aria-current')});}","else a.removeAttribute('aria-current')});if(target&&owner&&target!==owner)requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));}")
 index.write_text(s)
 for name in ['README','INSTRUCTOR']:
  p=BASE/(name+'.md');p.with_suffix('.html').write_text(document('IBM Bob workshop｜'+name,render(p.read_text())))
 (ROOT/'README.html').write_text(document('IBM Bob workshop',render((ROOT/'README.md').read_text())))
-print('Built four unified Part handouts with final cheatsheets, overview and instructor page.')
+print('Built four unified Scenario handouts with final cheatsheets, overview and instructor page.')

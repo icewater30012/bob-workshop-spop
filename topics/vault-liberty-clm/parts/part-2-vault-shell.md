@@ -1,6 +1,6 @@
-# Part 2｜Vault PKI ＋ Shell／crontab
+# Scenario 2｜Vault PKI ＋ Shell／crontab
 
-[← 回組合總覽](../README.md) · [開啟分頁教材](../index.html#part-2)
+[← 回總覽](../README.md) · [開啟分頁教材](../index.html#part-2)
 
 **難度：中階｜總時間：60 分鐘｜適合：熟悉 Shell、想串接集中式簽發的維運人員**
 
@@ -80,7 +80,7 @@ openssl version
 請先確認實際環境，只讀公開憑證與設定，不顯示私鑰或密碼：
 1. 檢查 Liberty server.xml：HTTPS、port、keystore 設定，以及服務控制方式。
 2. 讀取目前憑證的 SAN。
-3. 列出本路線所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
+3. 列出本情境所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
 
 工作目錄是 ~/clm-workshop；產出腳本用明確參數，Token 從受限本機檔案讀取。請依確認結果給完整執行命令。
 ```
