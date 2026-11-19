@@ -127,8 +127,8 @@ record_baseline</code></pre>
 <pre><code class="language-text">請產生單一 playbook.yml，需求如下：
 - 工具：用 ansible.builtin 與已安裝的 OpenSSL；改動 Liberty 的 task 要加 become: true。
 - 輸出：全部放 /home/vpcuser/workshop-&lt;你的名字&gt;/；CA 憑證 ca.crt（0644）、CA 私鑰 ca.key（0600）、伺服器憑證 server.crt（0644）、私鑰 server.key（0600）。
-- CA：路徑由 ca_cert_file、ca_key_file 變數指定（上述 ca.crt、ca.key）；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。CA Subject：O=IBM Bob Workshop、OU=group&lt;組別&gt;、CN=&lt;你的名字&gt; Test CA。
-- 伺服器憑證：IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1；Subject：O=IBM Bob Workshop、OU=group&lt;組別&gt;、CN=&lt;你的名字&gt;-liberty&lt;組別&gt;，用來辨識是誰簽發；每次輪換使用新序號。
+- CA：路徑由 ca_cert_file、ca_key_file 變數指定（上述 ca.crt、ca.key）；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。CA 的 CN 用 &lt;你的名字&gt;-test-ca 標示是誰建立的。
+- 伺服器憑證：IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1；CN 用 &lt;你的名字&gt;-liberty&lt;組別&gt;（例如 alice-liberty1）標示是誰簽發，與 Vault 簽發的做法一致；每次輪換使用新序號。
 - 效期：CA 與 leaf 效期自行設定，CA 效期需涵蓋 leaf。
 - 錯誤：失敗時停止，不忽略錯誤。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>

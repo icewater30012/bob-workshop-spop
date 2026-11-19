@@ -192,7 +192,7 @@ record_baseline
 請產生 issue-cert.sh，需求如下：
 - 方式：直接用 openssl req -x509 建立 server.key 與伺服器自簽 server.crt；不建立 CA，不產生 ca.crt／ca.key，也不需要 CSR 送簽流程。
 - 憑證屬性：basicConstraints=critical,CA:FALSE、適合 TLS server 的 keyUsage、extendedKeyUsage=serverAuth。
-- 名稱：Subject 帶上自己的資訊以辨識簽發者：O=IBM Bob Workshop、OU=group<組別>、CN=<你的名字>-liberty<組別>；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
+- 名稱：CN 用 <你的名字>-liberty<組別>（例如 alice-liberty1）標示是誰簽發，與 Vault 簽發的做法一致；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
 - 參數：效期、IP、輸出路徑用參數傳入；輸出到 /home/vpcuser/workshop-<你的名字>/：server.key（0600）、server.crt（0644）；每次產生新憑證都使用新序號。
 - 安全：使用 umask 077；檢查自簽簽章、IP SAN 與私鑰配對，不顯示私鑰。
 ```
