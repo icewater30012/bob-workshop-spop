@@ -54,13 +54,17 @@ ssh -G liberty1 | awk '$1 == "hostname" {print $2; exit}'
 # 記下輸出的 VM IP，再登入同一台 VM
 ssh liberty1
 # 以下在 Liberty VM 執行，自行建立本課工作目錄
-mkdir -p ~/clm-workshop
-cd ~/clm-workshop
+# 把 <你的名字> 換成自己的英文名，例如 alice → ~/workshop-alice
+mkdir -p ~/workshop-<你的名字>
+cd ~/workshop-<你的名字>
 hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version
 ```
+
+每位學員請建立**自己的資料夾**（避免 4～5 人共用同一台 Liberty VM 時互相覆蓋檔案）。下文以 `/home/vpcuser/workshop-<你的名字>/` 代表你的工作目錄，請換成實際路徑，例如 `/home/vpcuser/workshop-alice/`。
+`~/clm-workshop/` 是講師備妥的共用素材（Vault CA、Token、CA 鏈），**只讀取，不要在裡面放自己的檔案**。
 
 以下資料已為你備妥：
 
@@ -84,7 +88,7 @@ AppRole 由你在步驟 2 自行建立（policy 用 `pki-issue`）：Role ID 與
 2. 讀取目前憑證的 SAN。
 3. 列出本情境所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
 
-工作目錄是 ~/clm-workshop；Agent 用 HCL 指定實際路徑，hook 使用明確參數。請依確認結果給完整執行命令。
+工作目錄是 ~/workshop-<你的名字>；Agent 用 HCL 指定實際路徑，hook 使用明確參數。請依確認結果給完整執行命令。
 ```
 
 缺少 CA、role 或認證資料時，先向講師確認。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。
@@ -114,7 +118,7 @@ AppRole 由你在步驟 2 自行建立（policy 用 `pki-issue`）：Role ID 與
 - 不使用 DNS challenge，不要求真實 DNS 名稱。
 
 【路徑與權限】
-- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/workshop-<你的名字>/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
 - 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
 - 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
 
@@ -143,7 +147,7 @@ set -o pipefail
 TLS_HOST='填入學員電腦SSH config查到的Liberty VM IP'
 TLS_PORT=9443 # 以實際設定為準
 CA_FILE='/home/vpcuser/clm-workshop/pki-ca-chain.pem'
-LEAF_FILE='/home/vpcuser/clm-workshop/server.crt' # 部署時由 hook 拆出的 leaf；以 Bob 產出的實際檔名為準
+LEAF_FILE='/home/vpcuser/workshop-<你的名字>/server.crt' # 部署時由 hook 拆出的 leaf；以 Bob 產出的實際檔名為準
 
 record_baseline() (
   set -o pipefail
@@ -169,7 +173,7 @@ check_cert() (
   expected=$(openssl x509 -in "$LEAF_FILE" -noout -fingerprint -sha256)
   actual=$(printf '%s\n' "$peer" | openssl x509 -noout -fingerprint -sha256)
   [ "$expected" = "$actual" ] || { echo '線上憑證與本次產出不一致' >&2; exit 1; }
-  printf '%s\n' "$peer" | openssl x509 -noout -serial -issuer -dates -ext subjectAltName
+  printf '%s\n' "$peer" | openssl x509 -noout -serial -subject -issuer -dates -ext subjectAltName
   echo '驗證通過：TLS、CA 信任、IP SAN 與本次憑證指紋一致'
 )
 ```
@@ -181,7 +185,9 @@ check_cert() (
 
 ### Vault 簽發設定
 
-role `liberty-server` 已設定 `allow_ip_sans=true`、`require_cn=false`，簽發請求只要帶 `ip_sans`（SSH config 查到的 VM IP 與 `127.0.0.1`），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。
+role `liberty-server` 已設定 `allow_ip_sans=true`、`require_cn=false`，簽發請求只要帶 `ip_sans`（SSH config 查到的 VM IP 與 `127.0.0.1`），不強制 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。
+
+**標示簽發者：** 為了從憑證看出是誰簽發的，簽發時請另帶 `common_name=<你的名字>-liberty<組別>`（例如 `alice-liberty1`），它會寫入憑證的 CN（Vault 也會順帶放進 DNS SAN）。O／OU 由 role 統一設定、無法在簽發時各自指定，所以用 CN 標示。
 
 ## 實作流程
 
@@ -227,11 +233,12 @@ record_baseline
 【2a 建立 AppRole】
 - 用 /home/vpcuser/clm-workshop/vault-token 建立本組 AppRole。
 - policy 用 pki-issue（只允許 pki_int/issue/liberty-server 簽發）。
-- Role ID、Secret ID 各寫入 /home/vpcuser/clm-workshop/ 下的 0600 檔案，不要顯示值。
+- Role ID、Secret ID 各寫入 /home/vpcuser/workshop-<你的名字>/ 下的 0600 檔案，不要顯示值。
 
 【2b 產生 Agent 設定】
-- 產生 liberty-agent.hcl 與 template，路徑一律用 /home/vpcuser/clm-workshop/ 絕對路徑。
+- 產生 liberty-agent.hcl 與 template，路徑一律用 /home/vpcuser/workshop-<你的名字>/ 絕對路徑。
 - auto-auth 的 AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。
+- pkiCert 簽發時帶 common_name=<你的名字>-liberty<組別>（標示簽發者）、ip_sans 與 ttl。
 - 使用 pkiCert，單次簽發輸出同一份 PEM bundle（leaf、私鑰、CA 鏈）；不要把私鑰分成獨立簽發的 template。
 - hook 指向 deploy-hook.sh（步驟 3 建立），只在成功渲染後執行；設定執行逾時。
 ```
@@ -258,7 +265,7 @@ vault agent -help
 請產生 deploy-hook.sh，需求如下：
 - Agent 以 vpcuser 執行；hook 內讀寫 Liberty 檔案與重啟 Liberty 都要用 sudo。
 - 使用互斥鎖。
-- 把部署的 leaf 憑證另存為 /home/vpcuser/clm-workshop/server.crt（0644），供 check_cert 比對。
+- 把部署的 leaf 憑證另存為 /home/vpcuser/workshop-<你的名字>/server.crt（0644），供 check_cert 比對。
 - 從單一 bundle 拆出配對的 key／cert／chain，驗證私鑰與憑證公鑰一致及憑證鏈。
 - 在暫存目錄轉成 PKCS12，再備份並原子替換 live keystore。
 - 明確處理每一步失敗；只有內容變更時才受控重啟 Liberty。

@@ -43,13 +43,16 @@ ssh -G liberty1 | awk '$1 == "hostname" {print $2; exit}'
 # 記下輸出的 VM IP，再登入同一台 VM
 ssh liberty1
 # 以下在 Liberty VM 執行，自行建立本課工作目錄
-mkdir -p ~/clm-workshop
-cd ~/clm-workshop
+# 把 <你的名字> 換成自己的英文名，例如 alice → ~/workshop-alice
+mkdir -p ~/workshop-<你的名字>
+cd ~/workshop-<你的名字>
 hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version
 ```
+
+每位學員請建立**自己的資料夾**（避免 4～5 人共用同一台 Liberty VM 時互相覆蓋檔案）。下文以 `/home/vpcuser/workshop-<你的名字>/` 代表你的工作目錄，請換成實際路徑，例如 `/home/vpcuser/workshop-alice/`。
 
 規劃測試 CA 憑證與私鑰輸出位置，在步驟 2 自行建立。
 
@@ -61,7 +64,7 @@ openssl version
 2. 讀取目前憑證的 SAN。
 3. 列出本情境所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
 
-工作目錄是 ~/clm-workshop；Ansible 用明確變數指定實際路徑。請依確認結果給完整執行命令。
+工作目錄是 ~/workshop-<你的名字>；Ansible 用明確變數指定實際路徑。請依確認結果給完整執行命令。
 ```
 
 測試 CA 由學員在步驟 2 建立，效期與輪換門檻自行決定；不需講師提供 CA。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。
@@ -91,7 +94,7 @@ openssl version
 - 不使用 DNS challenge，不要求真實 DNS 名稱。
 
 【路徑與權限】
-- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/workshop-<你的名字>/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
 - 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
 - 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
 
@@ -119,8 +122,8 @@ openssl version
 set -o pipefail
 TLS_HOST='填入學員電腦SSH config查到的Liberty VM IP'
 TLS_PORT=9443 # 以實際設定為準
-CA_FILE='/home/vpcuser/clm-workshop/ca.crt' # Bob 產出後確認實際檔名
-LEAF_FILE='/home/vpcuser/clm-workshop/server.crt' # 同上
+CA_FILE='/home/vpcuser/workshop-<你的名字>/ca.crt' # Bob 產出後確認實際檔名
+LEAF_FILE='/home/vpcuser/workshop-<你的名字>/server.crt' # 同上
 
 record_baseline() (
   set -o pipefail
@@ -146,7 +149,7 @@ check_cert() (
   expected=$(openssl x509 -in "$LEAF_FILE" -noout -fingerprint -sha256)
   actual=$(printf '%s\n' "$peer" | openssl x509 -noout -fingerprint -sha256)
   [ "$expected" = "$actual" ] || { echo '線上憑證與本次產出不一致' >&2; exit 1; }
-  printf '%s\n' "$peer" | openssl x509 -noout -serial -issuer -dates -ext subjectAltName
+  printf '%s\n' "$peer" | openssl x509 -noout -serial -subject -issuer -dates -ext subjectAltName
   echo '驗證通過：TLS、CA 信任、IP SAN 與本次憑證指紋一致'
 )
 ```
@@ -201,9 +204,9 @@ record_baseline
 ```text
 請產生單一 playbook.yml，需求如下：
 - 工具：用 ansible.builtin 與已安裝的 OpenSSL；改動 Liberty 的 task 要加 become: true。
-- 輸出：全部放 /home/vpcuser/clm-workshop/；CA 憑證 ca.crt（0644）、CA 私鑰 ca.key（0600）、伺服器憑證 server.crt（0644）、私鑰 server.key（0600）。
-- CA：路徑由 ca_cert_file、ca_key_file 變數指定（上述 ca.crt、ca.key）；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。
-- 伺服器憑證：IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1；CN 僅作標籤；每次輪換使用新序號。
+- 輸出：全部放 /home/vpcuser/workshop-<你的名字>/；CA 憑證 ca.crt（0644）、CA 私鑰 ca.key（0600）、伺服器憑證 server.crt（0644）、私鑰 server.key（0600）。
+- CA：路徑由 ca_cert_file、ca_key_file 變數指定（上述 ca.crt、ca.key）；不存在時先建立自簽 CA（CA:true、keyCertSign），已存在則沿用。CA 私鑰只留在課堂 VM。CA Subject：O=IBM Bob Workshop、OU=group<組別>、CN=<你的名字> Test CA。
+- 伺服器憑證：IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1；Subject：O=IBM Bob Workshop、OU=group<組別>、CN=<你的名字>-liberty<組別>，用來辨識是誰簽發；每次輪換使用新序號。
 - 效期：CA 與 leaf 效期自行設定，CA 效期需涵蓋 leaf。
 - 錯誤：失敗時停止，不忽略錯誤。
 ```

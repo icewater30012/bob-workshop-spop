@@ -15,9 +15,9 @@
 - 記錄實際 RHEL、JDK、Liberty、Vault、Agent、Ansible 與 OpenSSL 版本，課前確認相容性；不沿用舊教材未驗證的固定版本。
 - Liberty HTTPS 預先啟動，提供可回應成功狀態的測試頁、基準憑證、備份與環境重置程序。
 - 預裝所需 CLI；權限與服務控制以各組執行帳號試跑。不要讓學員花時間處理安裝、sudo、systemd 與目錄權限。
-- `~/clm-workshop/` 由學員在 Liberty VM 自行建立；教材不預先提供 env.sh 或程式骨架。課前備妥並確認實際 CA_FILE、TLS_HOST（IP）、TLS_PORT、SERVER_NAME、Liberty 路徑、live keystore、服務控制命令、密碼檔位置，學員依步驟向 Bob 確認後使用。
+- 每位學員在 Liberty VM 自建 `~/workshop-<名字>/` 作為個人工作目錄（4～5 人共用一台 VM，避免檔案互相覆蓋）；教材不預先提供 env.sh 或程式骨架。課前備妥並確認實際 CA_FILE、TLS_HOST（IP）、TLS_PORT、SERVER_NAME、Liberty 路徑、live keystore、服務控制命令、密碼檔位置，學員依步驟向 Bob 確認後使用。
 - Vault 事先建立 Root／Intermediate CA、每組 PKI role 與最小權限認證。每組路徑隔離，不發 Root Token，不讓學員改共用 CA、mount、policy 或 auth method。
-- Vault 已建 PKI：`pki`（Workshop Root CA）→ `pki_int`（Workshop Intermediate CA），role `liberty-server`（IP SAN、無需 CN、TTL 1h／上限 168h），policy `pki-issue`。各 VM 的 `~/clm-workshop/` 已放 `vault-token`、`pki-ca-chain.pem`（Root＋Intermediate，供驗證）、`vault-api-ca.pem`（Vault API 自簽憑證，`VAULT_CACERT` 已寫入 `~/.bashrc`）。
+- Vault 已建 PKI：`pki`（Workshop Root CA）→ `pki_int`（Workshop Intermediate CA），role `liberty-server`（IP SAN、無需 CN、TTL 1h／上限 168h），policy `pki-issue`。各 VM 的共用素材目錄 `~/clm-workshop/`（講師備妥，學員只讀）已放 `vault-token`、`pki-ca-chain.pem`（Root＋Intermediate，供驗證）、`vault-api-ca.pem`（Vault API 自簽憑證，`VAULT_CACERT` 已寫入 `~/.bashrc`）。
 - Scenario 1 的 AppRole 由學員自建（policy `pki-issue`）；3 分鐘短 TTL 由學員在 template 指定 `ttl=3m`。
 - Scenario 2 使用各組獨立、有效一週的 Token（policy `workshop`，可管理 `pki*`、`auth/approle/*`）。
 - OpenSSL 情境由學員自行建立測試 CA，效期與輪換門檻自行決定；後續輪換沿用 CA，私鑰僅留在該組 VM。

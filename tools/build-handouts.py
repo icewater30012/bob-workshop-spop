@@ -11,6 +11,8 @@ index=BASE/'index.html'
 s=index.read_text()
 css='''pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4fa;border:1px solid #dce4ee;border-radius:8px;padding:16px;font:14px/1.7 ui-monospace,monospace}code{font-family:ui-monospace,monospace}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{border:1px solid #dce4ee;padding:10px;text-align:left}th{background:#edf3fa}.handout{max-width:1100px;margin:auto}.handout h2{margin-top:32px}.handout h3{margin-top:26px}.full-material{background:white;border:1px solid #dde5ed;padding:24px;border-radius:12px;margin-top:24px}.overview-info{margin-top:26px}.command-card{margin-top:14px}.command-card pre{font-size:13px}.table-wrap{overflow-x:auto}.handout svg{max-height:none}'''
 if '.overview-info{' not in s:s=s.replace('</style>',css+'</style>')
+css2='''.optional-note{background:#fff4d6;border:1px solid #f0b429;border-left:8px solid #f59e0b;border-radius:8px;padding:14px 18px;margin:16px 0;color:#5b3a00}.optional-note strong{color:#8a4b00}details.optional-steps{border:2px dashed #f0b429;border-radius:10px;padding:4px 16px;margin:16px 0;background:#fffdf5}details.optional-steps>summary{cursor:pointer;font-weight:700;color:#8a4b00;padding:10px 0}'''
+if '.optional-note{' not in s:s=s.replace('</style>',css2+'</style>')
 style=re.search(r'<style>(.*?)</style>',s,re.S)[1]
 def inline(t):
  t=e(t)
@@ -26,7 +28,7 @@ def render(md,svg=''):
  while i<len(lines):
   line=lines[i]
   if not line.strip():i+=1;continue
-  if line in ('<details>','</details>') or (line.startswith('<summary>') and line.endswith('</summary>')):
+  if line in ('<details>','</details>') or line.startswith('<details class=') or (line.startswith('<summary>') and line.endswith('</summary>')):
    out.append(line);i+=1;continue
   if line.startswith('```'):
    lang=line[3:].strip();i+=1;block=[]
@@ -47,6 +49,7 @@ def render(md,svg=''):
    ordered=bool(re.match(r'^\d+\.',line));tag='ol' if ordered else 'ul';items=[]
    while i<len(lines) and re.match(r'^(- |\d+\. )',lines[i]):items.append('<li>'+inline(re.sub(r'^(- |\d+\. )','',lines[i]))+'</li>');i+=1
    out.append('<'+tag+'>'+''.join(items)+'</'+tag+'>');continue
+  if line.startswith('> ! '):out.append('<blockquote class="optional-note">'+inline(line[4:])+'</blockquote>');i+=1;continue
   if line.startswith('> '):out.append('<blockquote>'+inline(line[2:])+'</blockquote>');i+=1;continue
   out.append('<p>'+inline(line)+'</p>');i+=1
  return '\n'.join(out)

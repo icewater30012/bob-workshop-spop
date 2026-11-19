@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IBM Bob workshop｜Scenario 4</title><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#202a36;font:16px/1.65 system-ui,-apple-system,"PingFang TC",sans-serif}main{max-width:1480px;margin:auto;padding:36px}h1{font-size:30px;margin:0 0 8px}h2{font-size:23px}h3{font-size:18px;margin:0 0 8px}p{margin:8px 0 14px}.eyebrow{color:#2879cd;font-size:13px;letter-spacing:2px;font-weight:700}.muted{color:#647386}a{color:#1672cf}nav{display:flex;gap:8px;border-bottom:2px solid #e0e6ed;overflow:auto;margin:26px 0}nav a{white-space:nowrap;text-decoration:none;padding:14px 20px;font-weight:650;border-bottom:4px solid transparent;color:#657384}nav a[aria-current=page]{color:#287ed3;border-color:#287ed3}.combos{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.combo,.architecture,.contract{background:white;border:1px solid #dfe5ec;border-radius:14px;padding:24px}.combo{border-top:5px solid #3488df;display:flex;flex-direction:column}.combo p{flex:1}.pill{display:inline-block;background:#eaf3ff;color:#2268ad;border-radius:5px;padding:3px 9px;font-size:13px;margin:8px 0}.button{display:inline-block;text-decoration:none;color:#247bd3;border:1px solid #6ca4e3;border-radius:7px;padding:9px 15px;background:#f7fbff;font-weight:650}.board{display:grid;grid-template-columns:repeat(6,minmax(230px,1fr));gap:16px;overflow-x:auto;padding:8px 0 20px}.lane{background:#eaf0f6;border-radius:14px;padding:15px}.card{background:white;border:1px solid #dfe5ed;border-left:5px solid #13a455;border-radius:12px;padding:17px;margin-top:14px;font-size:14px}.card h3{font-size:16px}.time{font-size:20px;font-weight:750}.architecture{margin-top:20px}svg{width:100%;height:auto;min-width:760px}.architecture{overflow-x:auto}details{margin-top:15px}summary{cursor:pointer;color:#2276c8;font-weight:600}.prompt{white-space:pre-wrap;line-height:1.7;color:#364860;font:14px/1.75 inherit}.copy{cursor:pointer;background:#f0f6ff;border:1px solid #bdd4ed;border-radius:5px;color:#2674c0;padding:5px 10px;margin-top:10px}.contract{margin:16px 0}.contract li{margin:6px 0}footer{border-top:1px solid #dfe5ec;margin-top:30px;padding-top:18px;color:#657384;font-size:14px}[hidden]{display:none!important}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #f0a324;outline-offset:4px}@media(max-width:1000px){.combos{grid-template-columns:repeat(2,1fr)}main{padding:22px}}@media(max-width:600px){.combos{grid-template-columns:1fr}h1{font-size:25px}}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4fa;border:1px solid #dce4ee;border-radius:8px;padding:16px;font:14px/1.7 ui-monospace,monospace}code{font-family:ui-monospace,monospace}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{border:1px solid #dce4ee;padding:10px;text-align:left}th{background:#edf3fa}.handout{max-width:1100px;margin:auto}.handout h2{margin-top:32px}.handout h3{margin-top:26px}.full-material{background:white;border:1px solid #dde5ed;padding:24px;border-radius:12px;margin-top:24px}.overview-info{margin-top:26px}.command-card{margin-top:14px}.command-card pre{font-size:13px}.table-wrap{overflow-x:auto}.handout svg{max-height:none}</style></head><body><main class="handout"><h1>Scenario 4｜OpenSSL ＋ Shell／crontab</h1>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IBM Bob workshop｜Scenario 4</title><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#202a36;font:16px/1.65 system-ui,-apple-system,"PingFang TC",sans-serif}main{max-width:1480px;margin:auto;padding:36px}h1{font-size:30px;margin:0 0 8px}h2{font-size:23px}h3{font-size:18px;margin:0 0 8px}p{margin:8px 0 14px}.eyebrow{color:#2879cd;font-size:13px;letter-spacing:2px;font-weight:700}.muted{color:#647386}a{color:#1672cf}nav{display:flex;gap:8px;border-bottom:2px solid #e0e6ed;overflow:auto;margin:26px 0}nav a{white-space:nowrap;text-decoration:none;padding:14px 20px;font-weight:650;border-bottom:4px solid transparent;color:#657384}nav a[aria-current=page]{color:#287ed3;border-color:#287ed3}.combos{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.combo,.architecture,.contract{background:white;border:1px solid #dfe5ec;border-radius:14px;padding:24px}.combo{border-top:5px solid #3488df;display:flex;flex-direction:column}.combo p{flex:1}.pill{display:inline-block;background:#eaf3ff;color:#2268ad;border-radius:5px;padding:3px 9px;font-size:13px;margin:8px 0}.button{display:inline-block;text-decoration:none;color:#247bd3;border:1px solid #6ca4e3;border-radius:7px;padding:9px 15px;background:#f7fbff;font-weight:650}.board{display:grid;grid-template-columns:repeat(6,minmax(230px,1fr));gap:16px;overflow-x:auto;padding:8px 0 20px}.lane{background:#eaf0f6;border-radius:14px;padding:15px}.card{background:white;border:1px solid #dfe5ed;border-left:5px solid #13a455;border-radius:12px;padding:17px;margin-top:14px;font-size:14px}.card h3{font-size:16px}.time{font-size:20px;font-weight:750}.architecture{margin-top:20px}svg{width:100%;height:auto;min-width:760px}.architecture{overflow-x:auto}details{margin-top:15px}summary{cursor:pointer;color:#2276c8;font-weight:600}.prompt{white-space:pre-wrap;line-height:1.7;color:#364860;font:14px/1.75 inherit}.copy{cursor:pointer;background:#f0f6ff;border:1px solid #bdd4ed;border-radius:5px;color:#2674c0;padding:5px 10px;margin-top:10px}.contract{margin:16px 0}.contract li{margin:6px 0}footer{border-top:1px solid #dfe5ec;margin-top:30px;padding-top:18px;color:#657384;font-size:14px}[hidden]{display:none!important}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #f0a324;outline-offset:4px}@media(max-width:1000px){.combos{grid-template-columns:repeat(2,1fr)}main{padding:22px}}@media(max-width:600px){.combos{grid-template-columns:1fr}h1{font-size:25px}}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4fa;border:1px solid #dce4ee;border-radius:8px;padding:16px;font:14px/1.7 ui-monospace,monospace}code{font-family:ui-monospace,monospace}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{border:1px solid #dce4ee;padding:10px;text-align:left}th{background:#edf3fa}.handout{max-width:1100px;margin:auto}.handout h2{margin-top:32px}.handout h3{margin-top:26px}.full-material{background:white;border:1px solid #dde5ed;padding:24px;border-radius:12px;margin-top:24px}.overview-info{margin-top:26px}.command-card{margin-top:14px}.command-card pre{font-size:13px}.table-wrap{overflow-x:auto}.handout svg{max-height:none}.optional-note{background:#fff4d6;border:1px solid #f0b429;border-left:8px solid #f59e0b;border-radius:8px;padding:14px 18px;margin:16px 0;color:#5b3a00}.optional-note strong{color:#8a4b00}details.optional-steps{border:2px dashed #f0b429;border-radius:10px;padding:4px 16px;margin:16px 0;background:#fffdf5}details.optional-steps>summary{cursor:pointer;font-weight:700;color:#8a4b00;padding:10px 0}</style></head><body><main class="handout"><h1>Scenario 4｜OpenSSL ＋ Shell／crontab</h1>
 <p><a href="../README.html">← 回總覽</a> · <a href="../index.html#part-4">開啟分頁教材</a></p>
 <p><strong>難度：⭐ 入門｜總時間：60 分鐘</strong></p>
 <h2>主機部署架構</h2>
@@ -15,12 +15,14 @@ ssh -G liberty1 | awk &#x27;$1 == &quot;hostname&quot; {print $2; exit}&#x27;
 # 記下輸出的 VM IP，再登入同一台 VM
 ssh liberty1
 # 以下在 Liberty VM 執行；自行建立本課工作目錄
-mkdir -p ~/clm-workshop
-cd ~/clm-workshop
+# 把 &lt;你的名字&gt; 換成自己的英文名，例如 alice → ~/workshop-alice
+mkdir -p ~/workshop-&lt;你的名字&gt;
+cd ~/workshop-&lt;你的名字&gt;
 hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version</code></pre>
+<p>每位學員請建立<strong>自己的資料夾</strong>（避免 4～5 人共用同一台 Liberty VM 時互相覆蓋檔案）。下文以 <code>/home/vpcuser/workshop-&lt;你的名字&gt;/</code> 代表你的工作目錄，請換成實際路徑，例如 <code>/home/vpcuser/workshop-alice/</code>。</p>
 <p>本情境直接產生 <strong>伺服器自簽憑證</strong>，由伺服器自己的私鑰簽署，不另外建立 CA 或 CA 憑證。憑證效期與輪換門檻自行決定，門檻需小於效期。</p>
 <h3>部署前確認、部署後驗證</h3>
 <p><strong>Liberty 目前已啟用 HTTPS，送出的是預設自簽憑證（<code>CN=localhost</code>，無 IP SAN）；本課要把它換成新憑證。</strong> 部署前先用 <code>record_baseline</code> 記錄舊序號；部署完成後，用 <code>check_cert</code> 確認服務送出的是本次產生的憑證。</p>
@@ -38,7 +40,7 @@ openssl version</code></pre>
 - 不使用 DNS challenge，不要求真實 DNS 名稱。
 
 【路徑與權限】
-- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/workshop-&lt;你的名字&gt;/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
 - 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
 - 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
 
@@ -57,7 +59,7 @@ openssl version</code></pre>
 <pre><code class="language-bash">set -o pipefail
 TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
 TLS_PORT=9443 # 以實際設定為準
-CERT_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # 本次產生的伺服器自簽憑證；Bob 產出後確認實際檔名
+CERT_FILE=&#x27;/home/vpcuser/workshop-&lt;你的名字&gt;/server.crt&#x27; # 本次產生的伺服器自簽憑證；Bob 產出後確認實際檔名
 
 record_baseline() (
   set -o pipefail
@@ -83,7 +85,7 @@ check_cert() (
   expected=$(openssl x509 -in &quot;$CERT_FILE&quot; -noout -fingerprint -sha256)
   actual=$(printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -fingerprint -sha256)
   [ &quot;$expected&quot; = &quot;$actual&quot; ] || { echo &#x27;線上憑證與本次產出不一致&#x27; &gt;&amp;2; exit 1; }
-  printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -serial -issuer -dates -ext subjectAltName
+  printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -serial -subject -issuer -dates -ext subjectAltName
   echo &#x27;驗證通過：TLS、明確信任的自簽憑證、IP SAN 與本次憑證指紋一致&#x27;
 )</code></pre>
 </details>
@@ -117,8 +119,8 @@ record_baseline</code></pre>
 <pre><code class="language-text">請產生 issue-cert.sh，需求如下：
 - 方式：直接用 openssl req -x509 建立 server.key 與伺服器自簽 server.crt；不建立 CA，不產生 ca.crt／ca.key，也不需要 CSR 送簽流程。
 - 憑證屬性：basicConstraints=critical,CA:FALSE、適合 TLS server 的 keyUsage、extendedKeyUsage=serverAuth。
-- 名稱：CN 僅作標籤；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
-- 參數：效期、IP、輸出路徑用參數傳入；輸出到 /home/vpcuser/clm-workshop/：server.key（0600）、server.crt（0644）；每次產生新憑證都使用新序號。
+- 名稱：Subject 帶上自己的資訊以辨識簽發者：O=IBM Bob Workshop、OU=group&lt;組別&gt;、CN=&lt;你的名字&gt;-liberty&lt;組別&gt;；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
+- 參數：效期、IP、輸出路徑用參數傳入；輸出到 /home/vpcuser/workshop-&lt;你的名字&gt;/：server.key（0600）、server.crt（0644）；每次產生新憑證都使用新序號。
 - 安全：使用 umask 077；檢查自簽簽章、IP SAN 與私鑰配對，不顯示私鑰。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash">bash -n ./issue-cert.sh
@@ -150,7 +152,7 @@ chmod 700 ./cert-rotate.sh</code></pre>
 <p><strong>給 Bob 的提示：</strong></p>
 <pre><code class="language-text">請產生 cron 排程（每日 02:00）：
 - 以 root 的 crontab 安裝，保留現有項目。
-- 腳本與產出一律用 /home/vpcuser/clm-workshop/ 絕對路徑，並帶明確的腳本參數。
+- 腳本與產出一律用 /home/vpcuser/workshop-&lt;你的名字&gt;/ 絕對路徑，並帶明確的腳本參數。
 - 用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
 <pre><code class="language-bash"># 預設憑證未到期，第一次用 FORCE 強制換證
@@ -179,7 +181,7 @@ exit   # 回到 vpcuser</code></pre>
 # 若需參數，須加在 cert-rotate.sh 後，與 cron 完全一致
 # 模擬 root 的 cron 環境；腳本放在 vpcuser 的工作目錄，用絕對路徑
 sudo env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin \
-  /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh
+  /bin/bash /home/vpcuser/workshop-&lt;你的名字&gt;/cert-rotate.sh
 echo &quot;exit code: $?&quot;
 check_cert</code></pre>
 <p><strong>檢查點：</strong> 精簡環境執行成功，未到期時 skip，線上服務正常。</p>
@@ -196,7 +198,7 @@ sudo crontab -l</code></pre>
 <p><strong>檢查點：</strong> 交接紀錄。</p>
 <h2>crontab 設定範例</h2>
 <p>排程裝在 root 的 crontab（先 <code>sudo -i</code> 切換成 root）；保留原有排程，腳本路徑為 vpcuser 的工作目錄，必要腳本參數換成該組實際值：</p>
-<pre><code class="language-cron">0 2 * * * /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh &gt;&gt; /home/vpcuser/clm-workshop/cron.log 2&gt;&amp;1</code></pre>
+<pre><code class="language-cron">0 2 * * * /bin/bash /home/vpcuser/workshop-&lt;你的名字&gt;/cert-rotate.sh &gt;&gt; /home/vpcuser/workshop-&lt;你的名字&gt;/cron.log 2&gt;&amp;1</code></pre>
 <p>腳本需有到期判斷、互斥鎖與日誌，且不能依賴目前 Terminal 的變數。課堂以相同指令手動測試，不必等到凌晨。</p>
 <h2>60 分鐘內的完成標準</h2>
 <ol><li>Liberty HTTPS 提供本次自簽憑證，IP SAN 與憑證指紋驗證通過。</li><li>一般重跑未達門檻時 skip；cron 已設定，精簡環境手動測試通過。</li><li>留下腳本、排程、部署後憑證資訊與簡短交接；附換證前後序號。</li><li>瀏覽器開啟 <code>https://&lt;IP&gt;:9443/adminCenter/</code>（<code>admin</code>／<code>admin123456</code>），檢視網址列憑證，序號與 <code>check_cert</code> 一致；自簽或私有 CA 憑證的瀏覽器警告屬預期。</li></ol>

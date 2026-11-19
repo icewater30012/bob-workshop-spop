@@ -15,7 +15,7 @@
 
 **延伸練習：** 用 Bob 建立完整 PKI、AGENTS.md、`/check-cert` Slash Command、可重用 Skill。
 
-**成果簡報：** 統整報告員用 Frontend Slides Skill 製作，安裝與使用步驟見下方〈統整報告員〉。
+**成果簡報（選修）：** 統整報告員用 Frontend Slides Skill 製作，安裝與使用步驟見下方〈統整報告員〉。**技術人員不需要先做，可直接進入 Scenario 1～4。**
 
 ## 實作環境與各組分配
 
@@ -72,6 +72,11 @@ ssh liberty1   # 第 1 組；其他組改用自己的編號
 
 ## 統整報告員：用 Frontend Slides 做成果簡報
 
+> ! 🟡 **非 mandatory presetting｜選修（非技術人員）：** 這一節不是 Scenario 的前置作業。它是給「非技術人員」的學習路徑：不用操作 Liberty 或 Vault，只要用 Bob 與 Frontend Slides Skill 整理並呈現成果。**技術人員請略過本節，直接到〈選擇情境〉挑一個 Scenario（1～4）開始實作。**
+
+<details class="optional-steps">
+<summary>展開／收合：統整報告員的簡報步驟（非技術人員選修，技術人員可略過）</summary>
+
 統整報告員（Presenter）要在課程結束前，用 **Frontend Slides Skill** 讓 Bob 產生一份 HTML 成果簡報（單一檔案，瀏覽器直接開啟）。Skill 檔案放在本 repo 的 [`skills/frontend-slides/`](https://github.com/icewater30012/bob-workshop-spop/tree/dev/skills/frontend-slides)。
 
 ### 1. 安裝 Skill（約 3 分鐘，在學員電腦做，不是 Liberty VM）
@@ -110,8 +115,8 @@ dir "$HOME\.bob\skills\frontend-slides"
 
 ```bash
 mkdir -p slides && cd slides
-scp liberty1:~/clm-workshop/before.txt .   # 第 1 組；其他組換編號
-scp liberty1:~/clm-workshop/after.txt .
+scp liberty1:~/workshop-<你的名字>/before.txt .   # 第 1 組；其他組換編號
+scp liberty1:~/workshop-<你的名字>/after.txt .
 ```
 
 另外準備：AdminCenter 憑證畫面的截圖（換證前後各一張）、本組選的 Scenario、遇到的問題與解法。
@@ -138,9 +143,13 @@ Skill 會先問長度、風格等問題，並產生 3 個風格預覽讓你挑�
 - 簡報裡**不要出現** Vault Token、Secret ID、私鑰或密碼；截圖前先確認畫面沒有這些資訊。
 - Skill 的「部署到 Vercel」與「匯出 PDF」是選用功能，不需要完成；課堂以瀏覽器直接簡報即可。
 
+</details>
+
 ## 選擇情境
 
 **四個 Scenario 各自獨立、互不相依，沒有先後順序；每組只選一個，60 分鐘完成。** 星等代表本課相對難度。
+
+> 技術人員從這裡開始：不需要先做〈統整報告員〉的簡報設定，直接選一個 Scenario 實作即可。
 
 | 獨立情境 | 難度 | 適合對象 | 時間 |
 |---|---|---|---|

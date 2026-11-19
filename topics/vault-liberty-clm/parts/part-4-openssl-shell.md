@@ -43,13 +43,16 @@ ssh -G liberty1 | awk '$1 == "hostname" {print $2; exit}'
 # 記下輸出的 VM IP，再登入同一台 VM
 ssh liberty1
 # 以下在 Liberty VM 執行；自行建立本課工作目錄
-mkdir -p ~/clm-workshop
-cd ~/clm-workshop
+# 把 <你的名字> 換成自己的英文名，例如 alice → ~/workshop-alice
+mkdir -p ~/workshop-<你的名字>
+cd ~/workshop-<你的名字>
 hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version
 ```
+
+每位學員請建立**自己的資料夾**（避免 4～5 人共用同一台 Liberty VM 時互相覆蓋檔案）。下文以 `/home/vpcuser/workshop-<你的名字>/` 代表你的工作目錄，請換成實際路徑，例如 `/home/vpcuser/workshop-alice/`。
 
 本情境直接產生 **伺服器自簽憑證**，由伺服器自己的私鑰簽署，不另外建立 CA 或 CA 憑證。憑證效期與輪換門檻自行決定，門檻需小於效期。
 
@@ -78,7 +81,7 @@ openssl version
 - 不使用 DNS challenge，不要求真實 DNS 名稱。
 
 【路徑與權限】
-- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/workshop-<你的名字>/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
 - 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
 - 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
 
@@ -106,7 +109,7 @@ openssl version
 set -o pipefail
 TLS_HOST='填入學員電腦SSH config查到的Liberty VM IP'
 TLS_PORT=9443 # 以實際設定為準
-CERT_FILE='/home/vpcuser/clm-workshop/server.crt' # 本次產生的伺服器自簽憑證；Bob 產出後確認實際檔名
+CERT_FILE='/home/vpcuser/workshop-<你的名字>/server.crt' # 本次產生的伺服器自簽憑證；Bob 產出後確認實際檔名
 
 record_baseline() (
   set -o pipefail
@@ -132,7 +135,7 @@ check_cert() (
   expected=$(openssl x509 -in "$CERT_FILE" -noout -fingerprint -sha256)
   actual=$(printf '%s\n' "$peer" | openssl x509 -noout -fingerprint -sha256)
   [ "$expected" = "$actual" ] || { echo '線上憑證與本次產出不一致' >&2; exit 1; }
-  printf '%s\n' "$peer" | openssl x509 -noout -serial -issuer -dates -ext subjectAltName
+  printf '%s\n' "$peer" | openssl x509 -noout -serial -subject -issuer -dates -ext subjectAltName
   echo '驗證通過：TLS、明確信任的自簽憑證、IP SAN 與本次憑證指紋一致'
 )
 ```
@@ -189,8 +192,8 @@ record_baseline
 請產生 issue-cert.sh，需求如下：
 - 方式：直接用 openssl req -x509 建立 server.key 與伺服器自簽 server.crt；不建立 CA，不產生 ca.crt／ca.key，也不需要 CSR 送簽流程。
 - 憑證屬性：basicConstraints=critical,CA:FALSE、適合 TLS server 的 keyUsage、extendedKeyUsage=serverAuth。
-- 名稱：CN 僅作標籤；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
-- 參數：效期、IP、輸出路徑用參數傳入；輸出到 /home/vpcuser/clm-workshop/：server.key（0600）、server.crt（0644）；每次產生新憑證都使用新序號。
+- 名稱：Subject 帶上自己的資訊以辨識簽發者：O=IBM Bob Workshop、OU=group<組別>、CN=<你的名字>-liberty<組別>；IP SAN 包含 SSH config 查到的 VM IP 與 127.0.0.1。
+- 參數：效期、IP、輸出路徑用參數傳入；輸出到 /home/vpcuser/workshop-<你的名字>/：server.key（0600）、server.crt（0644）；每次產生新憑證都使用新序號。
 - 安全：使用 umask 077；檢查自簽簽章、IP SAN 與私鑰配對，不顯示私鑰。
 ```
 
@@ -253,7 +256,7 @@ chmod 700 ./cert-rotate.sh
 ```text
 請產生 cron 排程（每日 02:00）：
 - 以 root 的 crontab 安裝，保留現有項目。
-- 腳本與產出一律用 /home/vpcuser/clm-workshop/ 絕對路徑，並帶明確的腳本參數。
+- 腳本與產出一律用 /home/vpcuser/workshop-<你的名字>/ 絕對路徑，並帶明確的腳本參數。
 - 用與 cron 相同的精簡環境手動測試，確認不依賴互動 shell 的環境變數。
 ```
 
@@ -298,7 +301,7 @@ exit   # 回到 vpcuser
 # 若需參數，須加在 cert-rotate.sh 後，與 cron 完全一致
 # 模擬 root 的 cron 環境；腳本放在 vpcuser 的工作目錄，用絕對路徑
 sudo env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin \
-  /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh
+  /bin/bash /home/vpcuser/workshop-<你的名字>/cert-rotate.sh
 echo "exit code: $?"
 check_cert
 ```
@@ -333,7 +336,7 @@ sudo crontab -l
 排程裝在 root 的 crontab（先 `sudo -i` 切換成 root）；保留原有排程，腳本路徑為 vpcuser 的工作目錄，必要腳本參數換成該組實際值：
 
 ```cron
-0 2 * * * /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh >> /home/vpcuser/clm-workshop/cron.log 2>&1
+0 2 * * * /bin/bash /home/vpcuser/workshop-<你的名字>/cert-rotate.sh >> /home/vpcuser/workshop-<你的名字>/cron.log 2>&1
 ```
 
 腳本需有到期判斷、互斥鎖與日誌，且不能依賴目前 Terminal 的變數。課堂以相同指令手動測試，不必等到凌晨。

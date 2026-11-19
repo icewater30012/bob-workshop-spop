@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IBM Bob workshop｜Scenario 1</title><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#202a36;font:16px/1.65 system-ui,-apple-system,"PingFang TC",sans-serif}main{max-width:1480px;margin:auto;padding:36px}h1{font-size:30px;margin:0 0 8px}h2{font-size:23px}h3{font-size:18px;margin:0 0 8px}p{margin:8px 0 14px}.eyebrow{color:#2879cd;font-size:13px;letter-spacing:2px;font-weight:700}.muted{color:#647386}a{color:#1672cf}nav{display:flex;gap:8px;border-bottom:2px solid #e0e6ed;overflow:auto;margin:26px 0}nav a{white-space:nowrap;text-decoration:none;padding:14px 20px;font-weight:650;border-bottom:4px solid transparent;color:#657384}nav a[aria-current=page]{color:#287ed3;border-color:#287ed3}.combos{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.combo,.architecture,.contract{background:white;border:1px solid #dfe5ec;border-radius:14px;padding:24px}.combo{border-top:5px solid #3488df;display:flex;flex-direction:column}.combo p{flex:1}.pill{display:inline-block;background:#eaf3ff;color:#2268ad;border-radius:5px;padding:3px 9px;font-size:13px;margin:8px 0}.button{display:inline-block;text-decoration:none;color:#247bd3;border:1px solid #6ca4e3;border-radius:7px;padding:9px 15px;background:#f7fbff;font-weight:650}.board{display:grid;grid-template-columns:repeat(6,minmax(230px,1fr));gap:16px;overflow-x:auto;padding:8px 0 20px}.lane{background:#eaf0f6;border-radius:14px;padding:15px}.card{background:white;border:1px solid #dfe5ed;border-left:5px solid #13a455;border-radius:12px;padding:17px;margin-top:14px;font-size:14px}.card h3{font-size:16px}.time{font-size:20px;font-weight:750}.architecture{margin-top:20px}svg{width:100%;height:auto;min-width:760px}.architecture{overflow-x:auto}details{margin-top:15px}summary{cursor:pointer;color:#2276c8;font-weight:600}.prompt{white-space:pre-wrap;line-height:1.7;color:#364860;font:14px/1.75 inherit}.copy{cursor:pointer;background:#f0f6ff;border:1px solid #bdd4ed;border-radius:5px;color:#2674c0;padding:5px 10px;margin-top:10px}.contract{margin:16px 0}.contract li{margin:6px 0}footer{border-top:1px solid #dfe5ec;margin-top:30px;padding-top:18px;color:#657384;font-size:14px}[hidden]{display:none!important}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #f0a324;outline-offset:4px}@media(max-width:1000px){.combos{grid-template-columns:repeat(2,1fr)}main{padding:22px}}@media(max-width:600px){.combos{grid-template-columns:1fr}h1{font-size:25px}}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4fa;border:1px solid #dce4ee;border-radius:8px;padding:16px;font:14px/1.7 ui-monospace,monospace}code{font-family:ui-monospace,monospace}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{border:1px solid #dce4ee;padding:10px;text-align:left}th{background:#edf3fa}.handout{max-width:1100px;margin:auto}.handout h2{margin-top:32px}.handout h3{margin-top:26px}.full-material{background:white;border:1px solid #dde5ed;padding:24px;border-radius:12px;margin-top:24px}.overview-info{margin-top:26px}.command-card{margin-top:14px}.command-card pre{font-size:13px}.table-wrap{overflow-x:auto}.handout svg{max-height:none}</style></head><body><main class="handout"><h1>Scenario 1｜Vault PKI ＋ Vault Agent</h1>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IBM Bob workshop｜Scenario 1</title><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#202a36;font:16px/1.65 system-ui,-apple-system,"PingFang TC",sans-serif}main{max-width:1480px;margin:auto;padding:36px}h1{font-size:30px;margin:0 0 8px}h2{font-size:23px}h3{font-size:18px;margin:0 0 8px}p{margin:8px 0 14px}.eyebrow{color:#2879cd;font-size:13px;letter-spacing:2px;font-weight:700}.muted{color:#647386}a{color:#1672cf}nav{display:flex;gap:8px;border-bottom:2px solid #e0e6ed;overflow:auto;margin:26px 0}nav a{white-space:nowrap;text-decoration:none;padding:14px 20px;font-weight:650;border-bottom:4px solid transparent;color:#657384}nav a[aria-current=page]{color:#287ed3;border-color:#287ed3}.combos{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.combo,.architecture,.contract{background:white;border:1px solid #dfe5ec;border-radius:14px;padding:24px}.combo{border-top:5px solid #3488df;display:flex;flex-direction:column}.combo p{flex:1}.pill{display:inline-block;background:#eaf3ff;color:#2268ad;border-radius:5px;padding:3px 9px;font-size:13px;margin:8px 0}.button{display:inline-block;text-decoration:none;color:#247bd3;border:1px solid #6ca4e3;border-radius:7px;padding:9px 15px;background:#f7fbff;font-weight:650}.board{display:grid;grid-template-columns:repeat(6,minmax(230px,1fr));gap:16px;overflow-x:auto;padding:8px 0 20px}.lane{background:#eaf0f6;border-radius:14px;padding:15px}.card{background:white;border:1px solid #dfe5ed;border-left:5px solid #13a455;border-radius:12px;padding:17px;margin-top:14px;font-size:14px}.card h3{font-size:16px}.time{font-size:20px;font-weight:750}.architecture{margin-top:20px}svg{width:100%;height:auto;min-width:760px}.architecture{overflow-x:auto}details{margin-top:15px}summary{cursor:pointer;color:#2276c8;font-weight:600}.prompt{white-space:pre-wrap;line-height:1.7;color:#364860;font:14px/1.75 inherit}.copy{cursor:pointer;background:#f0f6ff;border:1px solid #bdd4ed;border-radius:5px;color:#2674c0;padding:5px 10px;margin-top:10px}.contract{margin:16px 0}.contract li{margin:6px 0}footer{border-top:1px solid #dfe5ec;margin-top:30px;padding-top:18px;color:#657384;font-size:14px}[hidden]{display:none!important}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #f0a324;outline-offset:4px}@media(max-width:1000px){.combos{grid-template-columns:repeat(2,1fr)}main{padding:22px}}@media(max-width:600px){.combos{grid-template-columns:1fr}h1{font-size:25px}}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4fa;border:1px solid #dce4ee;border-radius:8px;padding:16px;font:14px/1.7 ui-monospace,monospace}code{font-family:ui-monospace,monospace}table{border-collapse:collapse;width:100%;margin:18px 0}th,td{border:1px solid #dce4ee;padding:10px;text-align:left}th{background:#edf3fa}.handout{max-width:1100px;margin:auto}.handout h2{margin-top:32px}.handout h3{margin-top:26px}.full-material{background:white;border:1px solid #dde5ed;padding:24px;border-radius:12px;margin-top:24px}.overview-info{margin-top:26px}.command-card{margin-top:14px}.command-card pre{font-size:13px}.table-wrap{overflow-x:auto}.handout svg{max-height:none}.optional-note{background:#fff4d6;border:1px solid #f0b429;border-left:8px solid #f59e0b;border-radius:8px;padding:14px 18px;margin:16px 0;color:#5b3a00}.optional-note strong{color:#8a4b00}details.optional-steps{border:2px dashed #f0b429;border-radius:10px;padding:4px 16px;margin:16px 0;background:#fffdf5}details.optional-steps>summary{cursor:pointer;font-weight:700;color:#8a4b00;padding:10px 0}</style></head><body><main class="handout"><h1>Scenario 1｜Vault PKI ＋ Vault Agent</h1>
 <p><a href="../README.html">← 回總覽</a> · <a href="../index.html#part-1">開啟分頁教材</a></p>
 <p><strong>難度：進階｜總時間：60 分鐘｜適合：想理解 Vault 持續換證與事件觸發的 SP／OP</strong></p>
 <h2>主機部署架構</h2>
@@ -16,12 +16,15 @@ ssh -G liberty1 | awk &#x27;$1 == &quot;hostname&quot; {print $2; exit}&#x27;
 # 記下輸出的 VM IP，再登入同一台 VM
 ssh liberty1
 # 以下在 Liberty VM 執行，自行建立本課工作目錄
-mkdir -p ~/clm-workshop
-cd ~/clm-workshop
+# 把 &lt;你的名字&gt; 換成自己的英文名，例如 alice → ~/workshop-alice
+mkdir -p ~/workshop-&lt;你的名字&gt;
+cd ~/workshop-&lt;你的名字&gt;
 hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version</code></pre>
+<p>每位學員請建立<strong>自己的資料夾</strong>（避免 4～5 人共用同一台 Liberty VM 時互相覆蓋檔案）。下文以 <code>/home/vpcuser/workshop-&lt;你的名字&gt;/</code> 代表你的工作目錄，請換成實際路徑，例如 <code>/home/vpcuser/workshop-alice/</code>。</p>
+<p><code>~/clm-workshop/</code> 是講師備妥的共用素材（Vault CA、Token、CA 鏈），<strong>只讀取，不要在裡面放自己的檔案</strong>。</p>
 <p>以下資料已為你備妥：</p>
 <div class="table-wrap"><table><tr><th>項目</th><th>內容</th></tr><tr><td>Vault 位址</td><td><code>https://128.168.136.176:8200</code>（<code>export VAULT_ADDR=https://128.168.136.176:8200</code>）</td></tr><tr><td>Vault 的 CA</td><td><code>/home/vpcuser/clm-workshop/vault-api-ca.pem</code>（Vault 使用自簽憑證）；<code>VAULT_CACERT</code> 已寫入 <code>~/.bashrc</code>，重新登入或 <code>source ~/.bashrc</code> 後生效</td></tr><tr><td>Vault Token</td><td><code>/home/vpcuser/clm-workshop/vault-token</code>（權限 0600，有效一週）；只從檔案讀取，不要回顯或貼進對話</td></tr><tr><td>PKI mount</td><td><code>pki_int</code>（Workshop Intermediate CA；Root 為 Workshop Root CA）</td></tr><tr><td>簽發 role</td><td><code>liberty-server</code>：允許 IP SAN、不需 CN；預設 TTL 1 小時、上限 168 小時，申請時可用 <code>ttl</code> 指定較短值（例如 3 分鐘）</td></tr><tr><td>簽發 policy</td><td><code>pki-issue</code></td></tr><tr><td>驗證用 CA 鏈</td><td><code>/home/vpcuser/clm-workshop/pki-ca-chain.pem</code>（Root＋Intermediate），即 <code>check_cert</code> 的 <code>CA_FILE</code></td></tr></table></div>
 <p>AppRole 由你在步驟 2 自行建立（policy 用 <code>pki-issue</code>）：Role ID 與 Secret ID 各存成 0600 本機檔案，Secret ID 是 Agent auto-auth 使用的認證，值不要貼進對話。</p>
@@ -31,7 +34,7 @@ openssl version</code></pre>
 2. 讀取目前憑證的 SAN。
 3. 列出本情境所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
 
-工作目錄是 ~/clm-workshop；Agent 用 HCL 指定實際路徑，hook 使用明確參數。請依確認結果給完整執行命令。</code></pre>
+工作目錄是 ~/workshop-&lt;你的名字&gt;；Agent 用 HCL 指定實際路徑，hook 使用明確參數。請依確認結果給完整執行命令。</code></pre>
 <p>缺少 CA、role 或認證資料時，先向講師確認。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。</p>
 <h3>部署前確認、部署後驗證</h3>
 <p><strong>Liberty 目前已啟用 HTTPS，送出的是預設自簽憑證（<code>CN=localhost</code>，無 IP SAN）；本課要把它換成新憑證。</strong> 部署前先用 <code>record_baseline</code> 記錄舊序號；部署完成後，用 <code>check_cert</code> 確認服務送出的是本次產生的憑證。</p>
@@ -49,7 +52,7 @@ openssl version</code></pre>
 - 不使用 DNS challenge，不要求真實 DNS 名稱。
 
 【路徑與權限】
-- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/workshop-&lt;你的名字&gt;/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
 - 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
 - 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
 
@@ -69,7 +72,7 @@ openssl version</code></pre>
 TLS_HOST=&#x27;填入學員電腦SSH config查到的Liberty VM IP&#x27;
 TLS_PORT=9443 # 以實際設定為準
 CA_FILE=&#x27;/home/vpcuser/clm-workshop/pki-ca-chain.pem&#x27;
-LEAF_FILE=&#x27;/home/vpcuser/clm-workshop/server.crt&#x27; # 部署時由 hook 拆出的 leaf；以 Bob 產出的實際檔名為準
+LEAF_FILE=&#x27;/home/vpcuser/workshop-&lt;你的名字&gt;/server.crt&#x27; # 部署時由 hook 拆出的 leaf；以 Bob 產出的實際檔名為準
 
 record_baseline() (
   set -o pipefail
@@ -95,13 +98,14 @@ check_cert() (
   expected=$(openssl x509 -in &quot;$LEAF_FILE&quot; -noout -fingerprint -sha256)
   actual=$(printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -fingerprint -sha256)
   [ &quot;$expected&quot; = &quot;$actual&quot; ] || { echo &#x27;線上憑證與本次產出不一致&#x27; &gt;&amp;2; exit 1; }
-  printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -serial -issuer -dates -ext subjectAltName
+  printf &#x27;%s\n&#x27; &quot;$peer&quot; | openssl x509 -noout -serial -subject -issuer -dates -ext subjectAltName
   echo &#x27;驗證通過：TLS、CA 信任、IP SAN 與本次憑證指紋一致&#x27;
 )</code></pre>
 </details>
 <ul><li><code>record_baseline</code> 無法取得憑證：先看設定與 <code>baseline-tls.log</code>，不直接認定憑證過期或信任有誤。</li><li><code>check_cert</code> 失敗：查看 <code>tls-check.log</code>；不能用忽略驗證的方式當作完成。</li></ul>
 <h3>Vault 簽發設定</h3>
-<p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
+<p>role <code>liberty-server</code> 已設定 <code>allow_ip_sans=true</code>、<code>require_cn=false</code>，簽發請求只要帶 <code>ip_sans</code>（SSH config 查到的 VM IP 與 <code>127.0.0.1</code>），不強制 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。</p>
+<p><strong>標示簽發者：</strong> 為了從憑證看出是誰簽發的，簽發時請另帶 <code>common_name=&lt;你的名字&gt;-liberty&lt;組別&gt;</code>（例如 <code>alice-liberty1</code>），它會寫入憑證的 CN（Vault 也會順帶放進 DNS SAN）。O／OU 由 role 統一設定、無法在簽發時各自指定，所以用 CN 標示。</p>
 <h2>實作流程</h2>
 <h3>1. 辨識現況｜5 分鐘</h3>
 <blockquote><strong>主責角色：</strong> 🤖 AP／維運（檢查 HTTPS／keystore、記錄預設憑證序號）｜<strong>協作：</strong> 🔐 憑證管理者（確認連得到 Vault）、📑 統整報告員（記錄舊序號與架構）</blockquote>
@@ -128,11 +132,12 @@ record_baseline</code></pre>
 <pre><code class="language-text">【2a 建立 AppRole】
 - 用 /home/vpcuser/clm-workshop/vault-token 建立本組 AppRole。
 - policy 用 pki-issue（只允許 pki_int/issue/liberty-server 簽發）。
-- Role ID、Secret ID 各寫入 /home/vpcuser/clm-workshop/ 下的 0600 檔案，不要顯示值。
+- Role ID、Secret ID 各寫入 /home/vpcuser/workshop-&lt;你的名字&gt;/ 下的 0600 檔案，不要顯示值。
 
 【2b 產生 Agent 設定】
-- 產生 liberty-agent.hcl 與 template，路徑一律用 /home/vpcuser/clm-workshop/ 絕對路徑。
+- 產生 liberty-agent.hcl 與 template，路徑一律用 /home/vpcuser/workshop-&lt;你的名字&gt;/ 絕對路徑。
 - auto-auth 的 AppRole ID／Secret ID 只讀取本機檔案，不要將值寫進回覆。
+- pkiCert 簽發時帶 common_name=&lt;你的名字&gt;-liberty&lt;組別&gt;（標示簽發者）、ip_sans 與 ttl。
 - 使用 pkiCert，單次簽發輸出同一份 PEM bundle（leaf、私鑰、CA 鏈）；不要把私鑰分成獨立簽發的 template。
 - hook 指向 deploy-hook.sh（步驟 3 建立），只在成功渲染後執行；設定執行逾時。</code></pre>
 <p><strong>操作指令（Liberty VM）：</strong></p>
@@ -147,7 +152,7 @@ record_baseline</code></pre>
 <pre><code class="language-text">請產生 deploy-hook.sh，需求如下：
 - Agent 以 vpcuser 執行；hook 內讀寫 Liberty 檔案與重啟 Liberty 都要用 sudo。
 - 使用互斥鎖。
-- 把部署的 leaf 憑證另存為 /home/vpcuser/clm-workshop/server.crt（0644），供 check_cert 比對。
+- 把部署的 leaf 憑證另存為 /home/vpcuser/workshop-&lt;你的名字&gt;/server.crt（0644），供 check_cert 比對。
 - 從單一 bundle 拆出配對的 key／cert／chain，驗證私鑰與憑證公鑰一致及憑證鏈。
 - 在暫存目錄轉成 PKCS12，再備份並原子替換 live keystore。
 - 明確處理每一步失敗；只有內容變更時才受控重啟 Liberty。

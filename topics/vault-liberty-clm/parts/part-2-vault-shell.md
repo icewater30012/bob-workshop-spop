@@ -54,13 +54,17 @@ ssh -G liberty1 | awk '$1 == "hostname" {print $2; exit}'
 # 記下輸出的 VM IP，再登入同一台 VM
 ssh liberty1
 # 以下在 Liberty VM 執行，自行建立本課工作目錄
-mkdir -p ~/clm-workshop
-cd ~/clm-workshop
+# 把 <你的名字> 換成自己的英文名，例如 alice → ~/workshop-alice
+mkdir -p ~/workshop-<你的名字>
+cd ~/workshop-<你的名字>
 hostname
 whoami
 /opt/ibm/wlp/bin/server status defaultServer
 openssl version
 ```
+
+每位學員請建立**自己的資料夾**（避免 4～5 人共用同一台 Liberty VM 時互相覆蓋檔案）。下文以 `/home/vpcuser/workshop-<你的名字>/` 代表你的工作目錄，請換成實際路徑，例如 `/home/vpcuser/workshop-alice/`。
+`~/clm-workshop/` 是講師備妥的共用素材（Vault CA、Token、CA 鏈），**只讀取，不要在裡面放自己的檔案**。
 
 以下資料已為你備妥：
 
@@ -82,7 +86,7 @@ openssl version
 2. 讀取目前憑證的 SAN。
 3. 列出本情境所需檔案與認證的位置；缺少的先指出缺項，不要假設存在 env.sh、程式骨架或參考完成檔。
 
-工作目錄是 ~/clm-workshop；產出腳本用明確參數，Token 從受限本機檔案讀取。請依確認結果給完整執行命令。
+工作目錄是 ~/workshop-<你的名字>；產出腳本用明確參數，Token 從受限本機檔案讀取。請依確認結果給完整執行命令。
 ```
 
 缺少 CA、role 或認證資料時，先向講師確認。後續程式與設定檔須先讓 Bob 產生、檢視，再執行。
@@ -112,7 +116,7 @@ openssl version
 - 不使用 DNS challenge，不要求真實 DNS 名稱。
 
 【路徑與權限】
-- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/clm-workshop/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
+- 所有產出（憑證、金鑰、腳本、日誌）放在 /home/vpcuser/workshop-<你的名字>/，腳本一律用這個絕對路徑，不用 ~ 或 $HOME（cron 以 root 執行，root 的 HOME 是 /root）。
 - 所需路徑明確傳入腳本或設定，不依賴未提供的設定檔。
 - 公開憑證 0644（vpcuser 要能讀來驗證），私鑰 0600。
 
@@ -141,7 +145,7 @@ set -o pipefail
 TLS_HOST='填入學員電腦SSH config查到的Liberty VM IP'
 TLS_PORT=9443 # 以實際設定為準
 CA_FILE='/home/vpcuser/clm-workshop/pki-ca-chain.pem'
-LEAF_FILE='/home/vpcuser/clm-workshop/server.crt' # request-cert.sh 拆出的 leaf；以 Bob 產出的實際檔名為準
+LEAF_FILE='/home/vpcuser/workshop-<你的名字>/server.crt' # request-cert.sh 拆出的 leaf；以 Bob 產出的實際檔名為準
 
 record_baseline() (
   set -o pipefail
@@ -167,7 +171,7 @@ check_cert() (
   expected=$(openssl x509 -in "$LEAF_FILE" -noout -fingerprint -sha256)
   actual=$(printf '%s\n' "$peer" | openssl x509 -noout -fingerprint -sha256)
   [ "$expected" = "$actual" ] || { echo '線上憑證與本次產出不一致' >&2; exit 1; }
-  printf '%s\n' "$peer" | openssl x509 -noout -serial -issuer -dates -ext subjectAltName
+  printf '%s\n' "$peer" | openssl x509 -noout -serial -subject -issuer -dates -ext subjectAltName
   echo '驗證通過：TLS、CA 信任、IP SAN 與本次憑證指紋一致'
 )
 ```
@@ -179,7 +183,9 @@ check_cert() (
 
 ### Vault 簽發設定
 
-role `liberty-server` 已設定 `allow_ip_sans=true`、`require_cn=false`，簽發請求只要帶 `ip_sans`（SSH config 查到的 VM IP 與 `127.0.0.1`），不需 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。
+role `liberty-server` 已設定 `allow_ip_sans=true`、`require_cn=false`，簽發請求只要帶 `ip_sans`（SSH config 查到的 VM IP 與 `127.0.0.1`），不強制 CN，也沒有 DNS challenge。role 為各組共用，請勿修改。
+
+**標示簽發者：** 為了從憑證看出是誰簽發的，簽發時請另帶 `common_name=<你的名字>-liberty<組別>`（例如 `alice-liberty1`），它會寫入憑證的 CN（Vault 也會順帶放進 DNS SAN）。O／OU 由 role 統一設定、無法在簽發時各自指定，所以用 CN 標示。
 
 ## 實作流程
 
@@ -226,8 +232,8 @@ record_baseline
 - 從環境設定取得 Vault 位址、mount（pki_int）、role（liberty-server）、CN 與 SAN。
 - 檢查 API 錯誤與必要欄位。
 - 把同一份 JSON 回應拆成 key、leaf 與完整 ca_chain；ca_chain 輸出到 chain.pem。
-- 輸出到 /home/vpcuser/clm-workshop/：私鑰 server.key（0600）、leaf 憑證 server.crt（0644）、完整 ca_chain 的 chain.pem（0644）。
-- 申請時帶 ip_sans（VM IP 與 127.0.0.1）與 ttl 參數。
+- 輸出到 /home/vpcuser/workshop-<你的名字>/：私鑰 server.key（0600）、leaf 憑證 server.crt（0644）、完整 ca_chain 的 chain.pem（0644）。
+- 申請時帶 ip_sans（VM IP 與 127.0.0.1）、ttl 與 common_name=<你的名字>-liberty<組別>（標示簽發者）參數。
 ```
 
 **操作指令（Liberty VM）：**
@@ -251,13 +257,13 @@ chmod 700 ./request-cert.sh
 
 ```text
 請建立 cert-rotate.sh，需求如下：
-- 路徑：Token 與其他檔案一律用 /home/vpcuser/clm-workshop/ 絕對路徑（cron 以 root 執行）。
+- 路徑：Token 讀取共用的 /home/vpcuser/clm-workshop/vault-token；其他檔案一律用 /home/vpcuser/workshop-<你的名字>/ 絕對路徑（cron 以 root 執行）。
 - 模式：一般模式未達輪換門檻就略過；FORCE=true 才強制簽發。加互斥鎖。
 - TTL：新憑證 TTL 自行設定，但不得超過 role 上限（168 小時）；輪換門檻須小於 TTL。
 - 部署：先在暫存目錄驗證配對及鏈並轉 PKCS12，再備份並原子替換 live keystore。
 - 重啟與驗證：用已確認的服務控制方式重啟，驗證線上序號；失敗就還原並恢復服務。
 - Vault 連線：腳本內明確設定 VAULT_ADDR=https://128.168.136.176:8200 與 VAULT_CACERT=/home/vpcuser/clm-workshop/vault-api-ca.pem（cron 不會載入 ~/.bashrc）。
-- 輸出：新 leaf 憑證存為 /home/vpcuser/clm-workshop/server.crt（0644），供 check_cert 比對。
+- 輸出：新 leaf 憑證存為 /home/vpcuser/workshop-<你的名字>/server.crt（0644），供 check_cert 比對。
 - 機密：Token 和 keystore 密碼從受限本機檔讀取，不寫入日誌。
 ```
 
@@ -281,7 +287,7 @@ chmod 700 ./cert-rotate.sh
 ```text
 請產生 cron 排程（每日 02:00）：
 - 以 root 的 crontab 安裝，保留現有項目。
-- 腳本與設定檔一律用 /home/vpcuser/clm-workshop/ 絕對路徑。
+- 腳本與設定檔一律用 /home/vpcuser/workshop-<你的名字>/ 絕對路徑。
 - 考慮 cron 的精簡環境與互斥鎖。
 - 課堂中手動執行同一命令驗證，不等待凌晨。
 ```
@@ -327,7 +333,7 @@ exit   # 回到 vpcuser
 # 模擬 root 的 cron 環境；腳本放在 vpcuser 的工作目錄，用絕對路徑
 # （腳本內已明確設定 VAULT_ADDR、VAULT_CACERT，所以這裡不必再傳）
 sudo env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin \
-  /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh
+  /bin/bash /home/vpcuser/workshop-<你的名字>/cert-rotate.sh
 echo "exit code: $?"
 check_cert
 ```
@@ -363,7 +369,7 @@ sudo crontab -l
 排程裝在 root 的 crontab（先 `sudo -i` 切換成 root）；保留原有排程，腳本路徑為 vpcuser 的工作目錄，必要腳本參數換成實際值：
 
 ```cron
-0 2 * * * /bin/bash /home/vpcuser/clm-workshop/cert-rotate.sh >> /home/vpcuser/clm-workshop/cron.log 2>&1
+0 2 * * * /bin/bash /home/vpcuser/workshop-<你的名字>/cert-rotate.sh >> /home/vpcuser/workshop-<你的名字>/cron.log 2>&1
 ```
 
 Token 由腳本讀取受限本機檔案，不放在 cron 指令或日誌。課堂手動測試同一命令，不必等到凌晨。
