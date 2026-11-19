@@ -79,6 +79,7 @@ s=re.sub(r'<section id="home">.*?</section>',lambda m:home,s,count=1,flags=re.S)
 # Also make footer links browser-readable.
 s=re.sub(r'<a href="INSTRUCTOR\.(md|html)">[^<]*</a>(?: · )?','',s)
 s=s.replace('href="INSTRUCTOR.md"','href="INSTRUCTOR.html"').replace('href="README.md"','href="README.html"').replace('Markdown 總覽','完整總覽')
+s=re.sub(r'(<span class="eyebrow">)PART (\d)',r'\1SCENARIO \2',s)
 s=re.sub(r'<title>.*?</title>','<title>IBM Bob workshop｜SP／OP 憑證自動化</title>',s,count=1)
 # Resolve fragments inside the active Scenario as well as top-level tabs.
 s=s.replace("const valid=target&&target.tagName==='SECTION'?id:'home';", "const owner=target&&(target.tagName==='SECTION'?target:target.closest('main>section'));const valid=owner?owner.id:'home';")
